@@ -26,10 +26,10 @@ interface TryOnModalProps {
 }
 
 export const HAIRCUT_ASSET_MAP: Record<string, any> = {
-  'curtain-fringe': require('@/assets/images/hair_curtain_fringe.jpg'),
-  'textured-crop': require('@/assets/images/hair_textured_crop.jpg'),
-  'classic-quiff': require('@/assets/images/hair_classic_quiff.jpg'),
-  'taper-fade': require('@/assets/images/hair_taper_fade.jpg'),
+  'curtain-fringe': require('@/assets/images/hair_curtain_fringe.png'),
+  'textured-crop': require('@/assets/images/hair_textured_crop.png'),
+  'classic-quiff': require('@/assets/images/hair_classic_quiff.png'),
+  'taper-fade': require('@/assets/images/hair_taper_fade.png'),
 };
 
 export function TryOnModal({

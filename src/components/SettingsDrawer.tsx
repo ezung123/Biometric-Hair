@@ -1,6 +1,6 @@
-// ─── SettingsDrawer ─────────────────────────────────────────────────────────
-// Clean, standard mobile app navigation drawer (Snapchat/Lensa style) with Home,
-// About Us, Learn About Hairstyles, Learn About Your Face, theme preferences, and legal.
+// ─── SettingsDrawer (Pristine iOS Native Aesthetic) ──────────────────────────
+// Clean, minimal, typography-driven iOS navigation drawer.
+// Zero emojis, zero verbose paragraphs, pure Apple Human Interface design.
 
 import React from 'react';
 import {
@@ -21,6 +21,8 @@ interface SettingsDrawerProps {
   onOpenLearnAboutFace: () => void;
   onOpenLearnHairstyles: () => void;
   onOpenAboutUs: () => void;
+  cameraActive: boolean;
+  onToggleCamera: () => void;
 }
 
 export function SettingsDrawer({
@@ -30,8 +32,10 @@ export function SettingsDrawer({
   onOpenLearnAboutFace,
   onOpenLearnHairstyles,
   onOpenAboutUs,
+  cameraActive,
+  onToggleCamera,
 }: SettingsDrawerProps) {
-  const { colors, mode, toggleTheme } = useAppTheme();
+  const { colors, mode, toggleTheme, isDark } = useAppTheme();
 
   return (
     <Modal
@@ -41,171 +45,162 @@ export function SettingsDrawer({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        {/* Dimmed backdrop (tap to dismiss) */}
+        {/* Dimmed backdrop */}
         <Pressable style={styles.backdrop} onPress={onClose} />
 
-        {/* Drawer container (slides from left or right) */}
+        {/* Inset iOS Style Drawer Container */}
         <View
           style={[
             styles.drawer,
             {
-              backgroundColor: colors.bgElevated,
-              borderColor: colors.border,
+              backgroundColor: isDark ? '#1C1C1E' : '#F2F2F7',
+              borderColor: isDark ? '#2C2C2E' : '#E5E5EA',
             },
           ]}
         >
-          {/* Drawer Brand Header */}
-          <View style={[styles.drawerHeader, { borderBottomColor: colors.border }]}>
+          {/* Header */}
+          <View style={[styles.drawerHeader, { borderBottomColor: isDark ? '#2C2C2E' : '#E5E5EA' }]}>
             <View>
-              <Text style={[styles.drawerTitle, { color: colors.text }]}>BIOMETRIC HAIR ARCH</Text>
-              <Text style={[styles.drawerSubtitle, { color: colors.accent }]}>Computational Aesthetics · φ</Text>
+              <Text style={[styles.drawerTitle, { color: colors.text }]}>Biometric Hair Arch</Text>
+              <Text style={[styles.drawerSubtitle, { color: colors.accent }]}>Version 1.0.0</Text>
             </View>
             <Pressable
               onPress={onClose}
-              style={[styles.closeBtn, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}
+              style={[
+                styles.closeBtn,
+                {
+                  backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA',
+                  borderColor: isDark ? '#3A3A3C' : '#D1D1D6',
+                },
+              ]}
+              accessibilityLabel="Close menu"
             >
-              <Text style={[styles.closeBtnText, { color: colors.textSecondary }]}>✕</Text>
+              <Text style={[styles.closeBtnText, { color: colors.text }]}>✕</Text>
             </Pressable>
           </View>
 
           <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-            {/* ── 1. Main Navigation ── */}
-            <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>MENU</Text>
-
-            {/* Home */}
-            <Pressable
-              onPress={() => {
-                onClose();
-                onNavigateHome();
-              }}
-              style={[styles.navItem, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}
-            >
-              <Text style={styles.navIcon}>🏠</Text>
-              <View style={styles.navTextCol}>
-                <Text style={[styles.navTitle, { color: colors.text }]}>Home</Text>
-                <Text style={[styles.navSubtitle, { color: colors.textSecondary }]}>Live Camera &amp; AI Mirror</Text>
-              </View>
-              <Text style={[styles.navArrow, { color: colors.accent }]}>→</Text>
-            </Pressable>
-
-            {/* Learn About Hairstyles */}
-            <Pressable
-              onPress={() => {
-                onClose();
-                onOpenLearnHairstyles();
-              }}
-              style={[styles.navItem, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}
-            >
-              <Text style={styles.navIcon}>✂️</Text>
-              <View style={styles.navTextCol}>
-                <Text style={[styles.navTitle, { color: colors.text }]}>Learn About Hairstyles</Text>
-                <Text style={[styles.navSubtitle, { color: colors.textSecondary }]}>Crown height, volume &amp; fade profiles</Text>
-              </View>
-              <Text style={[styles.navArrow, { color: colors.accent }]}>→</Text>
-            </Pressable>
-
-            {/* Learn About Your Face */}
-            <Pressable
-              onPress={() => {
-                onClose();
-                onOpenLearnAboutFace();
-              }}
-              style={[styles.navItem, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}
-            >
-              <Text style={styles.navIcon}>📐</Text>
-              <View style={styles.navTextCol}>
-                <Text style={[styles.navTitle, { color: colors.text }]}>Learn About Your Face</Text>
-                <Text style={[styles.navSubtitle, { color: colors.textSecondary }]}>Golden Ratio φ &amp; Farkas 33% thirds</Text>
-              </View>
-              <Text style={[styles.navArrow, { color: colors.accent }]}>→</Text>
-            </Pressable>
-
-            {/* About Us */}
-            <Pressable
-              onPress={() => {
-                onClose();
-                onOpenAboutUs();
-              }}
-              style={[styles.navItem, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}
-            >
-              <Text style={styles.navIcon}>ℹ️</Text>
-              <View style={styles.navTextCol}>
-                <Text style={[styles.navTitle, { color: colors.text }]}>About Us</Text>
-                <Text style={[styles.navSubtitle, { color: colors.textSecondary }]}>Our Mission &amp; Meta Hackathon Story</Text>
-              </View>
-              <Text style={[styles.navArrow, { color: colors.accent }]}>→</Text>
-            </Pressable>
-
-            {/* ── 2. Preferences ── */}
-            <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>PREFERENCES</Text>
-
-            <View style={[styles.rowCard, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
-              <View>
-                <Text style={[styles.rowTitle, { color: colors.text }]}>Interface Theme</Text>
-                <Text style={[styles.rowSubtitle, { color: colors.textSecondary }]}>
-                  {mode === 'light' ? 'Bespoke Luxury Cream' : 'Titanium Obsidian'}
-                </Text>
-              </View>
+            {/* ── Section: Navigation ── */}
+            <Text style={[styles.sectionHeader, { color: isDark ? '#8E8E93' : '#6C6C70' }]}>NAVIGATION</Text>
+            <View style={[styles.groupedCard, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF', borderColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}>
+              {/* Home */}
               <Pressable
-                onPress={toggleTheme}
-                style={[styles.actionPill, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}
+                onPress={() => {
+                  onClose();
+                  onNavigateHome();
+                }}
+                style={[styles.rowItem, { borderBottomColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}
               >
-                <Text style={[styles.actionPillText, { color: colors.text }]}>
-                  {mode === 'light' ? '☀️ Cream' : '🌙 Dark'}
-                </Text>
+                <Text style={[styles.rowLabel, { color: colors.text }]}>Home</Text>
+                <Text style={styles.chevron}>›</Text>
+              </Pressable>
+
+              {/* Haircut Architecture */}
+              <Pressable
+                onPress={() => {
+                  onClose();
+                  onOpenLearnHairstyles();
+                }}
+                style={[styles.rowItem, { borderBottomColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}
+              >
+                <Text style={[styles.rowLabel, { color: colors.text }]}>Haircut Architecture</Text>
+                <Text style={styles.chevron}>›</Text>
+              </Pressable>
+
+              {/* Facial Proportions */}
+              <Pressable
+                onPress={() => {
+                  onClose();
+                  onOpenLearnAboutFace();
+                }}
+                style={[styles.rowItem, { borderBottomColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}
+              >
+                <Text style={[styles.rowLabel, { color: colors.text }]}>Facial Proportions (φ 1.618)</Text>
+                <Text style={styles.chevron}>›</Text>
+              </Pressable>
+
+              {/* About Us */}
+              <Pressable
+                onPress={() => {
+                  onClose();
+                  onOpenAboutUs();
+                }}
+                style={styles.rowItemLast}
+              >
+                <Text style={[styles.rowLabel, { color: colors.text }]}>About Us</Text>
+                <Text style={styles.chevron}>›</Text>
               </Pressable>
             </View>
 
-            {/* ── 3. AI Infrastructure ── */}
-            <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>AI INFRASTRUCTURE</Text>
-
-            <View style={[styles.infoCard, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
-              <View style={styles.engineRow}>
-                <Text style={[styles.engineName, { color: colors.text }]}>Meta Muse Spark Open</Text>
-                <View style={[styles.statusBadge, { backgroundColor: colors.accentGreenLight }]}>
-                  <Text style={[styles.statusBadgeText, { color: colors.accentGreen }]}>Active · Baseten</Text>
-                </View>
+            {/* ── Section: Controls & Preferences ── */}
+            <Text style={[styles.sectionHeader, { color: isDark ? '#8E8E93' : '#6C6C70' }]}>CONTROLS</Text>
+            <View style={[styles.groupedCard, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF', borderColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}>
+              {/* Laptop Camera Toggle */}
+              <View style={[styles.rowItem, { borderBottomColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}>
+                <Text style={[styles.rowLabel, { color: colors.text }]}>Webcam Stream</Text>
+                <Pressable
+                  onPress={onToggleCamera}
+                  style={[
+                    styles.togglePill,
+                    {
+                      backgroundColor: cameraActive
+                        ? isDark ? '#30D158' : '#34C759'
+                        : isDark ? '#3A3A3C' : '#E5E5EA',
+                    },
+                  ]}
+                >
+                  <Text style={[styles.togglePillText, { color: cameraActive ? '#FFFFFF' : colors.textSecondary }]}>
+                    {cameraActive ? 'Enabled' : 'Disabled'}
+                  </Text>
+                </Pressable>
               </View>
-              <Text style={[styles.engineDesc, { color: colors.textSecondary }]}>
-                Deep reasoning agent running Neoclassical volumetric styling compensation.
-              </Text>
-            </View>
 
-            <View style={[styles.infoCard, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
-              <View style={styles.engineRow}>
-                <Text style={[styles.engineName, { color: colors.text }]}>Meta SAM 3.1 &amp; Inpaint</Text>
-                <View style={[styles.statusBadge, { backgroundColor: colors.accentGreenLight }]}>
-                  <Text style={[styles.statusBadgeText, { color: colors.accentGreen }]}>Active · Modal GPU</Text>
-                </View>
+              {/* Interface Theme */}
+              <View style={styles.rowItemLast}>
+                <Text style={[styles.rowLabel, { color: colors.text }]}>Appearance</Text>
+                <Pressable
+                  onPress={toggleTheme}
+                  style={[
+                    styles.segmentedControl,
+                    { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA' },
+                  ]}
+                >
+                  <Text style={[styles.segmentLabel, { color: colors.text }]}>
+                    {mode === 'light' ? 'Cream' : 'Dark'}
+                  </Text>
+                </Pressable>
               </View>
-              <Text style={[styles.engineDesc, { color: colors.textSecondary }]}>
-                Zero-shot scalp segmentation and generative hairstyle try-on pipeline.
-              </Text>
             </View>
 
-            {/* ── 4. Legal & Privacy ── */}
-            <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>LEGAL &amp; PRIVACY</Text>
-
-            <View style={[styles.legalCard, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
-              <Text style={[styles.legalTitle, { color: colors.text }]}>Biometric Data Protection (GDPR / CCPA)</Text>
-              <Text style={[styles.legalBody, { color: colors.textSecondary }]}>
-                Biometric Hair Arch processes dense facial keypoints in real time. All landmark vectors and facial geometry measurements are ephemeral and never sold or shared with third parties.
-              </Text>
+            {/* ── Section: AI Compute Infrastructure ── */}
+            <Text style={[styles.sectionHeader, { color: isDark ? '#8E8E93' : '#6C6C70' }]}>AI ENGINE</Text>
+            <View style={[styles.groupedCard, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF', borderColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}>
+              <View style={[styles.rowItem, { borderBottomColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}>
+                <Text style={[styles.rowLabel, { color: colors.text }]}>Meta Muse Spark Open</Text>
+                <Text style={[styles.badgeText, { color: isDark ? '#30D158' : '#34C759' }]}>Baseten Active</Text>
+              </View>
+              <View style={styles.rowItemLast}>
+                <Text style={[styles.rowLabel, { color: colors.text }]}>Meta SAM 3.1 &amp; Inpaint</Text>
+                <Text style={[styles.badgeText, { color: isDark ? '#30D158' : '#34C759' }]}>Modal Active</Text>
+              </View>
             </View>
 
-            <View style={[styles.legalCard, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
-              <Text style={[styles.legalTitle, { color: colors.text }]}>Terms of Service</Text>
-              <Text style={[styles.legalBody, { color: colors.textSecondary }]}>
-                Styling prescriptions and try-on simulations are AI-generated approximations intended for aesthetic consultation.
-              </Text>
+            {/* ── Section: Privacy & Legal ── */}
+            <Text style={[styles.sectionHeader, { color: isDark ? '#8E8E93' : '#6C6C70' }]}>PRIVACY &amp; LEGAL</Text>
+            <View style={[styles.groupedCard, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF', borderColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}>
+              <View style={[styles.rowItem, { borderBottomColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}>
+                <Text style={[styles.rowLabel, { color: colors.text }]}>Biometric Data Protection</Text>
+                <Text style={[styles.badgeText, { color: isDark ? '#8E8E93' : '#6C6C70' }]}>GDPR / CCPA</Text>
+              </View>
+              <View style={styles.rowItemLast}>
+                <Text style={[styles.rowLabel, { color: colors.text }]}>Terms of Service</Text>
+                <Text style={styles.chevron}>›</Text>
+              </View>
             </View>
 
-            {/* Version & Hackathon Attribution */}
-            <View style={styles.footerNote}>
-              <Text style={[styles.versionText, { color: colors.textMuted }]}>
-                Biometric Hair Arch · Version 1.0.0 (Build 2026.10)
-              </Text>
-              <Text style={[styles.versionSubtext, { color: colors.textMuted }]}>
+            {/* Footer */}
+            <View style={styles.footer}>
+              <Text style={[styles.footerText, { color: isDark ? '#8E8E93' : '#8E8E93' }]}>
                 Meta Global AI Developer Hackathon Edition
               </Text>
             </View>
@@ -227,172 +222,121 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
   },
   drawer: {
-    width: '85%',
-    maxWidth: 380,
+    width: '84%',
+    maxWidth: 360,
     height: '100%',
     marginLeft: 'auto',
     borderLeftWidth: 1,
     paddingTop: 16,
-    paddingBottom: 24,
   },
   drawerHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingBottom: 14,
+    paddingBottom: 16,
     borderBottomWidth: 1,
   },
   drawerTitle: {
-    fontSize: 15,
-    fontWeight: '900',
-    letterSpacing: 1.2,
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.4,
   },
   drawerSubtitle: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '600',
     marginTop: 2,
   },
   closeBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   closeBtnText: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 18,
-    paddingTop: 14,
+    paddingHorizontal: 16,
+    paddingTop: 16,
     paddingBottom: 40,
   },
   sectionHeader: {
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 1.2,
-    marginTop: 18,
-    marginBottom: 8,
-  },
-  navItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 13,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 8,
-  },
-  navIcon: {
-    fontSize: 20,
-    marginRight: 12,
-  },
-  navTextCol: {
-    flex: 1,
-  },
-  navTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  navSubtitle: {
-    fontSize: 11,
-    marginTop: 2,
-  },
-  navArrow: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  rowCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 13,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 8,
-  },
-  rowTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  rowSubtitle: {
-    fontSize: 11,
-    marginTop: 2,
-  },
-  actionPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 18,
-    borderWidth: 1,
-  },
-  actionPillText: {
     fontSize: 12,
-    fontWeight: '700',
-  },
-  infoCard: {
-    padding: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 8,
-  },
-  engineRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  engineName: {
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  statusBadgeText: {
-    fontSize: 9,
-    fontWeight: '800',
-  },
-  engineDesc: {
-    fontSize: 11,
-    lineHeight: 16,
-  },
-  legalCard: {
-    padding: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 8,
-  },
-  legalTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  legalBody: {
-    fontSize: 11,
-    lineHeight: 16,
-  },
-  footerNote: {
-    alignItems: 'center',
-    marginTop: 24,
-    paddingVertical: 12,
-  },
-  versionText: {
-    fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '600',
     letterSpacing: 0.5,
+    marginBottom: 6,
+    marginLeft: 12,
+    marginTop: 18,
   },
-  versionSubtext: {
-    fontSize: 10,
-    marginTop: 2,
+  groupedCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  rowItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  rowItemLast: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  rowLabel: {
+    fontSize: 15,
+    fontWeight: '500',
+    letterSpacing: -0.2,
+  },
+  chevron: {
+    fontSize: 18,
+    color: '#8E8E93',
+    fontWeight: '400',
+  },
+  togglePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 14,
+  },
+  togglePillText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  segmentedControl: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  segmentLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  footer: {
+    alignItems: 'center',
+    marginTop: 32,
+    paddingBottom: 16,
+  },
+  footerText: {
+    fontSize: 11,
+    fontWeight: '500',
   },
 });

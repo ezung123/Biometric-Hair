@@ -1,7 +1,7 @@
 // ─── HomeScreen (Camera-First App Architecture) ──────────────────────────────
 // Snapchat/Lensa-inspired mobile camera experience.
 // Direct camera-first viewport, AR golden ratio reticle, clean isolated hairstyle lenses,
-// real-time hairstyle augmentation onto the user's own face, and standard mobile drawer.
+// real-time transparent hairstyle augmentation onto the user's face, and standard mobile drawer.
 
 import { StatusBar } from 'expo-status-bar';
 import React, { useRef, useState } from 'react';
@@ -33,12 +33,19 @@ import type { FacialMetrics, HairstyleOption, StylingPrescription } from '@/type
 interface HairstyleLensItem {
   id: string;
   name: string; // One or two words
-  asset: any;
+  asset: any | null;
   category: string;
   targetMorphology: string;
 }
 
 const HAIRSTYLE_LENSES: HairstyleLensItem[] = [
+  {
+    id: 'none',
+    name: 'Natural',
+    asset: null,
+    category: 'Natural',
+    targetMorphology: 'All',
+  },
   {
     id: 'curtain-fringe',
     name: 'Curtain Fringe',
@@ -70,15 +77,16 @@ const HAIRSTYLE_LENSES: HairstyleLensItem[] = [
 ];
 
 export default function HomeScreen() {
-  const { colors, mode, toggleTheme } = useAppTheme();
+  const { colors, mode, toggleTheme, isDark } = useAppTheme();
 
   // Camera Ref
   const cameraRef = useRef<LiveCameraViewRef>(null);
 
   // States
+  const [cameraEnabled, setCameraEnabled] = useState(true);
   const [hudVisible, setHudVisible] = useState(true);
   const [showAugmentation, setShowAugmentation] = useState(true);
-  const [activeLensId, setActiveLensId] = useState<string>('curtain-fringe');
+  const [activeLensId, setActiveLensId] = useState<string>('none');
   const [activePresetIdx, setActivePresetIdx] = useState(0);
   const [capturedPhotoUri, setCapturedPhotoUri] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -106,8 +114,8 @@ export default function HomeScreen() {
 
   // Active Hairstyle Option for TryOnModal
   const activeStyleOption: HairstyleOption = {
-    id: activeLens.id,
-    name: activeLens.name,
+    id: activeLens.id === 'none' ? 'curtain-fringe' : activeLens.id,
+    name: activeLens.id === 'none' ? 'Curtain Fringe' : activeLens.name,
     category: activeLens.category,
     whyItWorks: 'Architecturally balances facial proportions toward the golden ratio.',
     suitabilityScore: 98,
@@ -156,7 +164,11 @@ export default function HomeScreen() {
   // Select hairstyle lens to augment on user's face
   function handleSelectLens(lensId: string) {
     setActiveLensId(lensId);
-    setShowAugmentation(true);
+    if (lensId === 'none') {
+      setShowAugmentation(false);
+    } else {
+      setShowAugmentation(true);
+    }
   }
 
   // Reset back to live camera
@@ -201,7 +213,7 @@ export default function HomeScreen() {
     <View style={styles.root}>
       <StatusBar style="light" />
 
-      {/* Hidden file input for web gallery upload */}
+      {/* Hidden file input for gallery upload */}
       {Platform.OS === 'web' && (
         <input
           type="file"
@@ -219,32 +231,50 @@ export default function HomeScreen() {
         metrics={metrics}
         hudVisible={hudVisible}
         augmentedHairAsset={activeLens.asset}
-        showAugmentation={showAugmentation}
+        showAugmentation={showAugmentation && activeLens.asset !== null}
+        cameraEnabled={cameraEnabled}
+        onToggleCamera={() => setCameraEnabled((v) => !v)}
       />
 
-      {/* ── 2. Top Controls (Unblocked & Sleek) ── */}
+      {/* ── 2. Top Controls (Pristine iOS Native Aesthetic) ── */}
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.topControlBar}>
-          {/* Hamburger Menu (Standard App Navigation) */}
+          {/* Hamburger Menu (Standard iOS Navigation) */}
           <Pressable
             onPress={() => setDrawerOpen(true)}
-            style={[styles.glassBtn, { backgroundColor: 'rgba(20, 20, 20, 0.75)', borderColor: colors.border }]}
+            style={[styles.glassBtn, { backgroundColor: 'rgba(20, 20, 20, 0.75)', borderColor: 'rgba(255, 255, 255, 0.15)' }]}
             accessibilityLabel="Open app menu"
           >
             <Text style={styles.glassBtnIcon}>☰</Text>
           </Pressable>
 
           {/* Center Brand Pill */}
-          <View style={[styles.brandPill, { backgroundColor: 'rgba(20, 20, 20, 0.75)', borderColor: colors.border }]}>
+          <View style={[styles.brandPill, { backgroundColor: 'rgba(20, 20, 20, 0.75)', borderColor: 'rgba(255, 255, 255, 0.15)' }]}>
             <Text style={[styles.brandPillText, { color: colors.accent }]}>BIOMETRIC HAIR · φ</Text>
           </View>
 
           {/* Right Action Stack */}
           <View style={styles.topRightActions}>
+            {/* Camera Power Toggle */}
+            <Pressable
+              onPress={() => setCameraEnabled((v) => !v)}
+              style={[
+                styles.glassBtn,
+                { backgroundColor: 'rgba(20, 20, 20, 0.75)', borderColor: 'rgba(255, 255, 255, 0.15)' },
+                cameraEnabled && { borderColor: '#34C759', backgroundColor: 'rgba(52, 199, 89, 0.25)' },
+              ]}
+              accessibilityLabel="Toggle Camera Power"
+            >
+              <Text style={[styles.glassBtnSmallText, { color: cameraEnabled ? '#34C759' : '#8E8E93' }]}>
+                {cameraEnabled ? 'CAM' : 'OFF'}
+              </Text>
+            </Pressable>
+
             {/* Theme Toggle */}
             <Pressable
               onPress={toggleTheme}
-              style={[styles.glassBtn, { backgroundColor: 'rgba(20, 20, 20, 0.75)', borderColor: colors.border }]}
+              style={[styles.glassBtn, { backgroundColor: 'rgba(20, 20, 20, 0.75)', borderColor: 'rgba(255, 255, 255, 0.15)' }]}
+              accessibilityLabel="Toggle Theme"
             >
               <Text style={styles.glassBtnText}>{mode === 'light' ? '☀️' : '🌙'}</Text>
             </Pressable>
@@ -254,11 +284,12 @@ export default function HomeScreen() {
               onPress={() => setHudVisible((v) => !v)}
               style={[
                 styles.glassBtn,
-                { backgroundColor: 'rgba(20, 20, 20, 0.75)', borderColor: colors.border },
+                { backgroundColor: 'rgba(20, 20, 20, 0.75)', borderColor: 'rgba(255, 255, 255, 0.15)' },
                 hudVisible && { borderColor: '#D4AF37', backgroundColor: 'rgba(212, 175, 55, 0.3)' },
               ]}
+              accessibilityLabel="Toggle Reticle"
             >
-              <Text style={[styles.glassBtnText, hudVisible && { color: '#D4AF37' }]}>👁️</Text>
+              <Text style={[styles.glassBtnText, hudVisible && { color: '#D4AF37' }]}>φ</Text>
             </Pressable>
           </View>
         </View>
@@ -309,7 +340,7 @@ export default function HomeScreen() {
           })}
         </View>
 
-        {/* Shutter Row with Augmentation Switcher & Gallery */}
+        {/* Shutter Row with Try-On View & Gallery */}
         <View style={styles.shutterRow}>
           {/* Gallery Button */}
           <Pressable onPress={handleTriggerGallery} style={styles.sideBtn}>
@@ -331,20 +362,20 @@ export default function HomeScreen() {
             </View>
           </Pressable>
 
-          {/* Toggle Hair Augmentation on User's Face */}
+          {/* Try-On View on User's Face */}
           <Pressable
-            onPress={() => setShowAugmentation((v) => !v)}
+            onPress={() => setTryOnVisible(true)}
             style={[
               styles.sideBtn,
-              showAugmentation && { borderColor: '#D4AF37', backgroundColor: 'rgba(212, 175, 55, 0.25)' },
+              activeLensId !== 'none' && { borderColor: '#D4AF37', backgroundColor: 'rgba(212, 175, 55, 0.25)' },
             ]}
-            accessibilityLabel="Toggle haircut augmentation on face"
+            accessibilityLabel="View full try-on on your face"
           >
-            <Text style={styles.sideBtnIcon}>✂️</Text>
+            <Text style={[styles.sideBtnIcon, { fontSize: 16, color: '#D4AF37', fontWeight: '800' }]}>✦</Text>
           </Pressable>
         </View>
 
-        {/* ── 4. Clean Isolated Hairstyle Lenses (One or Two Words, Hair Asset Only) ── */}
+        {/* ── 4. Clean Isolated Hairstyle Lenses (Pristine Circle Carousels) ── */}
         <View style={styles.lensCarouselDeck}>
           <ScrollView
             horizontal
@@ -359,18 +390,22 @@ export default function HomeScreen() {
                   onPress={() => handleSelectLens(lens.id)}
                   style={styles.lensItem}
                 >
-                  {/* Round Hairpiece Thumbnail */}
+                  {/* Round Hairpiece Thumbnail (Transparent PNG, No Black Box) */}
                   <View
                     style={[
                       styles.lensCircle,
                       isSelected && styles.lensCircleActive,
                     ]}
                   >
-                    <Image
-                      source={lens.asset}
-                      style={styles.lensThumbImage}
-                      resizeMode="cover"
-                    />
+                    {lens.asset ? (
+                      <Image
+                        source={lens.asset}
+                        style={styles.lensThumbImage}
+                        resizeMode="contain"
+                      />
+                    ) : (
+                      <Text style={styles.naturalLensIcon}>✕</Text>
+                    )}
                   </View>
 
                   {/* One or Two Words */}
@@ -398,6 +433,8 @@ export default function HomeScreen() {
         onOpenLearnAboutFace={() => setLearnFaceVisible(true)}
         onOpenLearnHairstyles={() => setLearnHairVisible(true)}
         onOpenAboutUs={() => setAboutUsVisible(true)}
+        cameraActive={cameraEnabled}
+        onToggleCamera={() => setCameraEnabled((v) => !v)}
       />
 
       {/* ── "Learn About Your Face" Modal (Golden Ratio & Farkas Thirds) ── */}
@@ -451,35 +488,40 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   glassBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   glassBtnIcon: {
-    fontSize: 20,
+    fontSize: 18,
     color: '#FBF9F5',
   },
   glassBtnText: {
-    fontSize: 16,
+    fontSize: 14,
+  },
+  glassBtnSmallText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   brandPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 18,
     borderWidth: 1,
   },
   brandPillText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 1.5,
+    letterSpacing: 1.2,
   },
   topRightActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   statusToastWrapper: {
     alignItems: 'center',
@@ -488,13 +530,13 @@ const styles = StyleSheet.create({
   statusToast: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 18,
     borderWidth: 1,
   },
   statusToastText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
@@ -525,23 +567,23 @@ const styles = StyleSheet.create({
   shapeSelectorRow: {
     flexDirection: 'row',
     backgroundColor: 'rgba(20, 20, 20, 0.8)',
-    padding: 4,
-    borderRadius: 24,
+    padding: 3,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.15)',
     marginBottom: 10,
-    gap: 4,
+    gap: 3,
   },
   shapePill: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    borderRadius: 16,
   },
   shapePillActive: {
     backgroundColor: '#D4AF37',
   },
   shapePillText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: '#A8A29E',
   },
@@ -553,7 +595,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 28,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   sideBtn: {
     width: 44,
@@ -566,12 +608,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sideBtnIcon: {
-    fontSize: 20,
+    fontSize: 18,
   },
   shutterOuterRing: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     borderWidth: 4,
     borderColor: '#FBF9F5',
     justifyContent: 'center',
@@ -580,9 +622,9 @@ const styles = StyleSheet.create({
     boxShadow: '0 0 20px rgba(212, 175, 55, 0.5)',
   },
   shutterInnerCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     backgroundColor: '#FBF9F5',
     justifyContent: 'center',
     alignItems: 'center',
@@ -595,7 +637,7 @@ const styles = StyleSheet.create({
   },
   lensCarouselDeck: {
     width: '100%',
-    paddingVertical: 4,
+    paddingVertical: 2,
   },
   lensScroll: {
     paddingHorizontal: 20,
@@ -605,16 +647,16 @@ const styles = StyleSheet.create({
   },
   lensItem: {
     alignItems: 'center',
-    width: 78,
+    width: 74,
   },
   lensCircle: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     overflow: 'hidden',
-    backgroundColor: '#000000',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
@@ -623,20 +665,26 @@ const styles = StyleSheet.create({
     borderColor: '#D4AF37',
     borderWidth: 2.5,
     boxShadow: '0 0 16px rgba(212, 175, 55, 0.75)',
+    backgroundColor: 'rgba(212, 175, 55, 0.15)',
   },
   lensThumbImage: {
-    width: '100%',
-    height: '100%',
+    width: '88%',
+    height: '88%',
+  },
+  naturalLensIcon: {
+    fontSize: 16,
+    color: '#8E8E93',
+    fontWeight: '700',
   },
   lensLabel: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#A8A29E',
-    marginTop: 6,
+    fontWeight: '600',
+    color: '#8E8E93',
+    marginTop: 5,
     textAlign: 'center',
   },
   lensLabelActive: {
     color: '#FBF9F5',
-    fontWeight: '800',
+    fontWeight: '700',
   },
 });

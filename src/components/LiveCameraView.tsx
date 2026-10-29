@@ -1,6 +1,6 @@
 // ─── LiveCameraView ─────────────────────────────────────────────────────────
-// Snapchat/Lensa-style live camera viewfinder with real-time AR face alignment reticle
-// and bulletproof webcam streaming across Windows laptop webcams & mobile cameras.
+// Snapchat/Lensa-style live camera viewfinder with real-time AR face alignment reticle,
+// realistic transparent hair augmentation, and complete webcam hardware on/off controls.
 
 import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import {
@@ -19,6 +19,7 @@ import type { FacialMetrics } from '@/types';
 export interface LiveCameraViewRef {
   captureSnapshot: () => string | null;
   startCamera: () => void;
+  stopCamera: () => void;
   hasCameraStream: boolean;
 }
 
@@ -29,18 +30,31 @@ interface LiveCameraViewProps {
   onCameraActive?: (active: boolean) => void;
   augmentedHairAsset?: any;
   showAugmentation?: boolean;
+  cameraEnabled?: boolean;
+  onToggleCamera?: () => void;
 }
 
 export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>(
-  ({ frozenImageUri, metrics, hudVisible, onCameraActive, augmentedHairAsset, showAugmentation = true }, ref) => {
-    const { colors } = useAppTheme();
+  (
+    {
+      frozenImageUri,
+      metrics,
+      hudVisible,
+      onCameraActive,
+      augmentedHairAsset,
+      showAugmentation = true,
+      cameraEnabled = true,
+      onToggleCamera,
+    },
+    ref
+  ) => {
+    const { colors, isDark } = useAppTheme();
     const [hasCameraStream, setHasCameraStream] = useState(false);
     const [cameraPermissionError, setCameraPermissionError] = useState(false);
-    const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
 
-    // Multi-tier fallback getUserMedia to ensure compatibility with all laptop webcams
+    // Multi-tier fallback getUserMedia to ensure compatibility with Windows laptop webcams
     async function requestWebcamStream(): Promise<MediaStream> {
       if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
         throw new Error('Webcam API is not supported in this browser.');
@@ -57,7 +71,7 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
           audio: false,
         });
       } catch (err1) {
-        console.warn('[Camera] Tier 1 (facingMode: user) failed, trying generic video constraint:', err1);
+        console.warn('[Camera] Tier 1 failed, trying generic video constraint:', err1);
       }
 
       // Tier 2: Generic video constraint (crucial for Windows laptop built-in webcams)
@@ -67,7 +81,7 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
           audio: false,
         });
       } catch (err2) {
-        console.warn('[Camera] Tier 2 (generic video: true) failed, trying standard resolution:', err2);
+        console.warn('[Camera] Tier 2 failed, trying standard resolution:', err2);
       }
 
       // Tier 3: Low resolution fallback
@@ -81,7 +95,6 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
       if (Platform.OS !== 'web') return;
 
       setCameraPermissionError(false);
-      setErrorMessage(null);
 
       try {
         const stream = await requestWebcamStream();
@@ -95,33 +108,46 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
           videoRef.current.setAttribute('playsinline', 'true');
           videoRef.current.setAttribute('autoplay', 'true');
           videoRef.current.onloadedmetadata = () => {
-            videoRef.current?.play().catch((e) => console.log('[Camera] Autoplay pending interaction:', e));
+            videoRef.current?.play().catch((e) => console.log('[Camera] Autoplay waiting:', e));
           };
           videoRef.current.play().catch(() => {});
         }
       } catch (err: any) {
-        console.warn('[Camera] getUserMedia failed completely:', err);
+        console.warn('[Camera] getUserMedia failed:', err);
         setHasCameraStream(false);
         setCameraPermissionError(true);
-        setErrorMessage(err?.message || 'Camera blocked or not found');
         onCameraActive?.(false);
       }
     }
 
-    // Auto-request camera on mount
+    function stopCamera() {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+      setHasCameraStream(false);
+      onCameraActive?.(false);
+    }
+
+    // React to cameraEnabled prop changes
     useEffect(() => {
-      startCamera();
+      if (cameraEnabled) {
+        startCamera();
+      } else {
+        stopCamera();
+      }
 
       return () => {
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach((track) => track.stop());
-        }
+        stopCamera();
       };
-    }, []);
+    }, [cameraEnabled]);
 
-    // Ensure video stream connects if video element mounted or updated
+    // Ensure video stream connects if element mounted
     useEffect(() => {
-      if (hasCameraStream && streamRef.current && videoRef.current) {
+      if (cameraEnabled && hasCameraStream && streamRef.current && videoRef.current) {
         const video = videoRef.current;
         if (video.srcObject !== streamRef.current) {
           video.srcObject = streamRef.current;
@@ -129,7 +155,7 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
           video.play().catch(() => {});
         }
       }
-    }, [hasCameraStream]);
+    }, [hasCameraStream, cameraEnabled]);
 
     // Expose captureSnapshot & controls to parent
     useImperativeHandle(ref, () => ({
@@ -157,13 +183,14 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
         return null;
       },
       startCamera,
+      stopCamera,
       hasCameraStream,
     }));
 
     return (
       <View style={styles.container}>
-        {/* ── 1. Video Element (Always rendered on Web for immediate stream binding) ── */}
-        {Platform.OS === 'web' && (
+        {/* ── 1. Video Element (Hardware Mirrored Feed) ── */}
+        {Platform.OS === 'web' && cameraEnabled && (
           <video
             ref={videoRef}
             autoPlay
@@ -184,15 +211,31 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
           />
         )}
 
-        {/* ── 2. Frozen Image (When snapshot captured or fallback demo lens) ── */}
+        {/* ── 2. Frozen Snapshot or Fallback Demo View ── */}
         {frozenImageUri ? (
           <Image
             source={{ uri: frozenImageUri }}
             style={styles.fullMedia}
             resizeMode="cover"
           />
+        ) : !cameraEnabled ? (
+          // Camera Turned Off by User
+          <View style={styles.cameraOffContainer}>
+            <View style={[styles.cameraOffPill, { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' }]}>
+              <Text style={[styles.cameraOffTitle, { color: colors.text }]}>Camera Paused</Text>
+              <Text style={[styles.cameraOffSubtitle, { color: colors.textSecondary }]}>
+                Hardware webcam stream is stopped
+              </Text>
+              <Pressable
+                style={[styles.resumeCameraBtn, { backgroundColor: colors.accent }]}
+                onPress={onToggleCamera}
+              >
+                <Text style={styles.resumeCameraBtnText}>Turn Camera On</Text>
+              </Pressable>
+            </View>
+          </View>
         ) : !hasCameraStream ? (
-          // Fallback demo face if camera waiting for permission or not ready
+          // Loading / Requesting Permission
           <View style={styles.fallbackContainer}>
             <Image
               source={{ uri: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=900&q=80' }}
@@ -204,33 +247,30 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
               onPress={startCamera}
             >
               <Text style={[styles.enableCameraText, { color: colors.accent }]}>
-                📷 Turn On Laptop Webcam
+                Turn On Laptop Webcam
               </Text>
               {cameraPermissionError && (
-                <Text style={styles.permissionSubtext}>Tap to request browser camera permission</Text>
+                <Text style={styles.permissionSubtext}>Click to grant browser webcam access</Text>
               )}
             </Pressable>
           </View>
         ) : null}
 
-        {/* ── AR Augmented Hairpiece onto User's Face ── */}
+        {/* ── 3. AR Augmented Transparent Hairstyle (No Black Box) ── */}
         {showAugmentation && augmentedHairAsset && (
           <View style={styles.hairAugmentationWrapper} pointerEvents="none">
             <Image
               source={augmentedHairAsset}
-              style={[
-                styles.augmentedHairImage,
-                Platform.OS === 'web' && ({ mixBlendMode: 'screen' } as any),
-              ]}
+              style={styles.augmentedHairImage}
               resizeMode="contain"
             />
           </View>
         )}
 
-        {/* ── 3. AR Neoclassical Reticle Overlay ── */}
+        {/* ── 4. AR Neoclassical Reticle Overlay ── */}
         <BiometricOverlay visible={hudVisible} metrics={metrics} />
 
-        {/* ── 4. Alignment Badge ── */}
+        {/* ── 5. Status Pill ── */}
         <View style={styles.reticleBadgeWrapper}>
           <View
             style={[
@@ -249,9 +289,9 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
             />
             <Text style={[styles.reticleText, { color: colors.accent }]}>
               {frozenImageUri
-                ? 'SNAPSHOT CAPTURED · ANALYZED'
+                ? 'SNAPSHOT CAPTURED'
                 : hasCameraStream
-                ? 'LIVE WEBCAM · ALIGN FACE'
+                ? 'LIVE WEBCAM'
                 : 'ALIGN FACE IN GOLDEN OVAL'}
             </Text>
           </View>
@@ -283,6 +323,43 @@ const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 1,
   },
+  cameraOffContainer: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#121214',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2,
+    paddingHorizontal: 24,
+  },
+  cameraOffPill: {
+    paddingVertical: 24,
+    paddingHorizontal: 28,
+    borderRadius: 20,
+    alignItems: 'center',
+    maxWidth: 320,
+    boxShadow: '0 8px 30px rgba(0, 0, 0, 0.4)',
+  },
+  cameraOffTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  cameraOffSubtitle: {
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  resumeCameraBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  resumeCameraBtnText: {
+    color: '#0C0A09',
+    fontSize: 13,
+    fontWeight: '700',
+  },
   enableCameraPill: {
     position: 'absolute',
     top: 140,
@@ -304,6 +381,20 @@ const styles = StyleSheet.create({
     color: '#A8A29E',
     fontSize: 11,
     marginTop: 4,
+  },
+  hairAugmentationWrapper: {
+    position: 'absolute',
+    top: '7%',
+    alignSelf: 'center',
+    width: 290,
+    height: 270,
+    zIndex: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  augmentedHairImage: {
+    width: '100%',
+    height: '100%',
   },
   reticleBadgeWrapper: {
     position: 'absolute',
@@ -331,19 +422,5 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1,
-  },
-  hairAugmentationWrapper: {
-    position: 'absolute',
-    top: '10%',
-    alignSelf: 'center',
-    width: 320,
-    height: 300,
-    zIndex: 6,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  augmentedHairImage: {
-    width: '100%',
-    height: '100%',
   },
 });
