@@ -1,7 +1,6 @@
 // ─── MetricCards (Harmonic Balance Dossier) ──────────────────────────────────
-// Aggregated, editorial aesthetic summary of Neoclassical facial metrics,
-// Golden Ratio (φ ≈ 1.618) alignment, and compensatory volume vectors.
-// Adapts reactively to Luxury Cream and Titanium Obsidian themes.
+// Short, punchy, visually magnetic Neoclassical biometric indicators.
+// Readable in 2 seconds with zero unnecessary clutter.
 
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -25,18 +24,24 @@ export function MetricCards({ metrics }: MetricCardsProps) {
 
   const { upperThirdPct, midThirdPct, lowerThirdPct } = metrics.verticalThirds;
 
+  // Punchy 1-line takeaways
+  const isElongated = metrics.facialIndex > 88;
+  const isRound = metrics.facialIndex < 82;
+
+  const takeaway1 = isElongated
+    ? '✦ Forehead: Fringe breaks vertical length by 22%'
+    : isRound
+    ? '✦ Crown: +25mm vertical height elongates face'
+    : '✦ Proportions: Naturally balanced Neoclassical ratio';
+
+  const takeaway2 = isElongated
+    ? '✦ Temples: Lateral volume balances elongated chin'
+    : isRound
+    ? '✦ Temples: Tight taper slims lateral width'
+    : '✦ Styling: Compatible with virtually any silhouette';
+
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
-      {/* ── Section Title ── */}
-      <View style={styles.headerRow}>
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          NEOCLASSICAL HARMONIC BALANCE
-        </Text>
-        <View style={[styles.phiBadge, { backgroundColor: colors.accentLight }]}>
-          <Text style={[styles.phiText, { color: colors.accent }]}>φ 1.618 RATIO</Text>
-        </View>
-      </View>
-
       {/* ── Unified Primary Balance Card ── */}
       <View
         style={[
@@ -48,7 +53,7 @@ export function MetricCards({ metrics }: MetricCardsProps) {
           },
         ]}
       >
-        {/* Top: Score & Morphology Classification */}
+        {/* Top: Score & Face Shape */}
         <View style={styles.cardTopRow}>
           <View style={styles.scoreBlock}>
             <Text style={[styles.scoreNumber, { color: colors.text }]}>
@@ -56,40 +61,32 @@ export function MetricCards({ metrics }: MetricCardsProps) {
               <Text style={[styles.scorePercent, { color: colors.accent }]}>%</Text>
             </Text>
             <Text style={[styles.scoreCaption, { color: colors.textSecondary }]}>
-              Harmonic Equivalence
+              Golden Ratio Harmony (φ 1.618)
             </Text>
           </View>
 
-          <View style={styles.classificationBlock}>
-            <View style={[styles.shapePill, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
-              <Text style={[styles.shapePillText, { color: colors.text }]}>
-                {metrics.faceShape.toUpperCase()}
-              </Text>
-            </View>
-            <Text style={[styles.morphologyText, { color: colors.textSecondary }]}>
-              {harmony.morphologyCategory}
+          <View style={[styles.shapePill, { backgroundColor: colors.accentLight }]}>
+            <Text style={[styles.shapePillText, { color: colors.accent }]}>
+              {metrics.faceShape.toUpperCase()}
             </Text>
-            <Text style={[styles.indexValue, { color: colors.textMuted }]}>
-              Facial Index {metrics.facialIndex.toFixed(1)}
+            <Text style={[styles.indexSubtitle, { color: colors.textSecondary }]}>
+              Index {metrics.facialIndex.toFixed(0)}
             </Text>
           </View>
         </View>
 
-        {/* Divider */}
-        <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
-
-        {/* ── Unified Vertical Thirds Balance Bar ── */}
+        {/* ── Neoclassical Thirds Continuous Bar ── */}
         <View style={styles.thirdsSection}>
           <View style={styles.thirdsHeaderRow}>
             <Text style={[styles.thirdsLabel, { color: colors.textSecondary }]}>
-              FARKAS VERTICAL THIRDS DISTRIBUTION
+              FARKAS VERTICAL THIRDS
             </Text>
             <Text style={[styles.baselineLabel, { color: colors.textMuted }]}>
-              Baseline: 33.3%
+              Ideal: 33% each
             </Text>
           </View>
 
-          {/* Continuous segmented horizontal balance bar */}
+          {/* Segmented bar */}
           <View style={[styles.triBarTrack, { backgroundColor: colors.bgSubtle }]}>
             <View
               style={[
@@ -120,39 +117,24 @@ export function MetricCards({ metrics }: MetricCardsProps) {
             />
           </View>
 
-          {/* Tri-segment legends */}
+          {/* Legend */}
           <View style={styles.thirdsLegendRow}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: isDark ? '#D4AF37' : '#A06E3B' }]} />
-              <Text style={[styles.legendName, { color: colors.textSecondary }]}>Hairline</Text>
-              <Text style={[styles.legendValue, { color: colors.text }]}>{upperThirdPct.toFixed(1)}%</Text>
-            </View>
-
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: isDark ? '#B8972D' : '#C59A45' }]} />
-              <Text style={[styles.legendName, { color: colors.textSecondary }]}>Brow-to-Nose</Text>
-              <Text style={[styles.legendValue, { color: colors.text }]}>{midThirdPct.toFixed(1)}%</Text>
-            </View>
-
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: isDark ? '#8F7522' : '#8A5D2A' }]} />
-              <Text style={[styles.legendName, { color: colors.textSecondary }]}>Jaw-to-Chin</Text>
-              <Text style={[styles.legendValue, { color: colors.text }]}>{lowerThirdPct.toFixed(1)}%</Text>
-            </View>
+            <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+              Hairline <Text style={[styles.boldVal, { color: colors.text }]}>{upperThirdPct.toFixed(0)}%</Text>
+            </Text>
+            <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+              Brow <Text style={[styles.boldVal, { color: colors.text }]}>{midThirdPct.toFixed(0)}%</Text>
+            </Text>
+            <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+              Chin <Text style={[styles.boldVal, { color: colors.text }]}>{lowerThirdPct.toFixed(0)}%</Text>
+            </Text>
           </View>
         </View>
 
-        {/* ── Mathematical Architecture Rationale ── */}
-        <View style={[styles.rationaleContainer, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
-          <View style={styles.rationaleHeader}>
-            <Text style={[styles.rationaleIcon, { color: colors.accent }]}>✦</Text>
-            <Text style={[styles.rationaleTitle, { color: colors.accent }]}>
-              VOLUMETRIC PRESCRIPTION VECTOR
-            </Text>
-          </View>
-          <Text style={[styles.rationaleText, { color: colors.textSecondary }]}>
-            {harmony.compensatoryVector.mathematicalRationale}
-          </Text>
+        {/* ── Magnetic Quick Takeaways (Short & Precise) ── */}
+        <View style={[styles.takeawayBox, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
+          <Text style={[styles.takeawayText, { color: colors.text }]}>{takeaway1}</Text>
+          <Text style={[styles.takeawayText, { color: colors.text }]}>{takeaway2}</Text>
         </View>
       </View>
     </View>
@@ -162,91 +144,59 @@ export function MetricCards({ metrics }: MetricCardsProps) {
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  sectionTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1.2,
-  },
-  phiBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-  },
-  phiText: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.8,
+    paddingTop: 12,
+    paddingBottom: 6,
   },
   mainCard: {
-    borderRadius: 20,
+    borderRadius: 22,
     borderWidth: 1,
-    padding: 18,
+    padding: 16,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 1,
-    shadowRadius: 12,
+    shadowRadius: 10,
     elevation: 2,
-    gap: 16,
+    gap: 12,
   },
   cardTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   scoreBlock: {
-    gap: 2,
+    gap: 1,
   },
   scoreNumber: {
-    fontSize: 38,
+    fontSize: 34,
     fontWeight: '800',
     letterSpacing: -1,
-    lineHeight: 44,
+    lineHeight: 38,
   },
   scorePercent: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '600',
   },
   scoreCaption: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  classificationBlock: {
-    alignItems: 'flex-end',
-    gap: 4,
+    fontSize: 11,
+    fontWeight: '600',
   },
   shapePill: {
     paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-    borderWidth: 1,
+    paddingVertical: 6,
+    borderRadius: 14,
+    alignItems: 'center',
+    gap: 1,
   },
   shapePillText: {
     fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1,
+    fontWeight: '800',
+    letterSpacing: 0.8,
   },
-  morphologyText: {
-    fontSize: 12,
+  indexSubtitle: {
+    fontSize: 9,
     fontWeight: '600',
   },
-  indexValue: {
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  divider: {
-    height: 1,
-    width: '100%',
-  },
   thirdsSection: {
-    gap: 8,
+    gap: 6,
   },
   thirdsHeaderRow: {
     flexDirection: 'row',
@@ -263,8 +213,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   triBarTrack: {
-    height: 8,
-    borderRadius: 4,
+    height: 7,
+    borderRadius: 3.5,
     flexDirection: 'row',
     overflow: 'hidden',
   },
@@ -274,48 +224,24 @@ const styles = StyleSheet.create({
   thirdsLegendRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 4,
   },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  legendDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  legendName: {
+  legendText: {
     fontSize: 11,
     fontWeight: '500',
   },
-  legendValue: {
-    fontSize: 11,
+  boldVal: {
     fontWeight: '700',
   },
-  rationaleContainer: {
-    padding: 12,
-    borderRadius: 14,
+  takeawayBox: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
     borderWidth: 1,
-    gap: 6,
+    gap: 4,
   },
-  rationaleHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  rationaleIcon: {
+  takeawayText: {
     fontSize: 12,
-  },
-  rationaleTitle: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-  },
-  rationaleText: {
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: '400',
+    fontWeight: '600',
+    lineHeight: 16,
   },
 });

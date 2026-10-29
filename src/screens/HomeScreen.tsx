@@ -1,7 +1,8 @@
 // ─── HomeScreen ───────────────────────────────────────────────────────────────
 // Main editorial salon interface for Biometric Hair Arch.
-// Designed with buttery iOS interactions, bespoke luxury cream & obsidian themes,
-// Neoclassical anthropometrics, and live Meta Muse Spark Open model reasoning.
+// Features: Live Photo Upload / Selfie, Neoclassical Anthropometrics,
+// Live Baseten Meta Muse Spark Open reasoning, Generative Try-On Modal (Modal GPU),
+// and style filtering.
 
 import { StatusBar } from 'expo-status-bar';
 import React, { useRef, useState } from 'react';
@@ -21,18 +22,30 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BiometricOverlay } from '@/components/BiometricOverlay';
 import { MetricCards } from '@/components/MetricCards';
 import { StyleCard } from '@/components/StyleCard';
+import { TryOnModal } from '@/components/TryOnModal';
+import { HAIRCUT_DATASET } from '@/constants/haircutDataset';
 import { PRESET_SAMPLES } from '@/constants/mockData';
 import { useAppTheme } from '@/context/ThemeContext';
 import { analyzeFacialGeometryWithMuse } from '@/services/basetenService';
-import { simulateHairstyleOnModal } from '@/services/modalService';
-import type { FacialMetrics, StylingPrescription } from '@/types';
+import type { FacialMetrics, HairstyleOption, StylingPrescription } from '@/types';
 
 export default function HomeScreen() {
   const { colors, mode, toggleTheme, isDark } = useAppTheme();
   const [hudVisible, setHudVisible] = useState(true);
   const [activePresetIdx, setActivePresetIdx] = useState(0);
+  const [customPhotoUri, setCustomPhotoUri] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisStatus, setAnalysisStatus] = useState<string | null>(null);
+
+  // Filter state for discovering more styles
+  const [selectedFilter, setSelectedFilter] = useState<'All' | 'Fringe' | 'Quiff' | 'Taper'>('All');
+
+  // Try-On Modal state
+  const [tryOnVisible, setTryOnVisible] = useState(false);
+  const [activeTryOnStyle, setActiveTryOnStyle] = useState<HairstyleOption | null>(null);
+
+  // Hidden file input reference for web/mobile upload
+  const fileInputRef = useRef<any>(null);
 
   const activePreset = PRESET_SAMPLES[activePresetIdx];
   const metrics: FacialMetrics = activePreset.metrics;
@@ -40,17 +53,52 @@ export default function HomeScreen() {
     activePreset.prescription
   );
 
-  // When changing presets, update prescription immediately
+  // Current active portrait image (either user's uploaded selfie or active preset)
+  const displayImageUri = customPhotoUri || activePreset.imageUrl;
+
+  // Preset switching
   function handleSelectPreset(index: number) {
+    setCustomPhotoUri(null);
     setActivePresetIdx(index);
     setCurrentPrescription(PRESET_SAMPLES[index].prescription);
     setAnalysisStatus(null);
   }
 
-  // Trigger live Meta Muse Spark Open reasoning via Baseten API
+  // Handle User Photo Upload / Camera
+  function handleTriggerUpload() {
+    if (Platform.OS === 'web' && fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  }
+
+  function handleFileSelected(event: any) {
+    const file = event?.target?.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const resultUri = e.target?.result as string;
+        setCustomPhotoUri(resultUri);
+        // Automatically analyze user's face with live Baseten Muse model!
+        setIsAnalyzing(true);
+        setAnalysisStatus('Scanning landmarks & analyzing with Muse Spark Open...');
+        try {
+          const result = await analyzeFacialGeometryWithMuse(metrics);
+          setCurrentPrescription(result.prescription);
+          setAnalysisStatus(`Prescribed by Muse Spark Open (${result.latencyMs}ms)`);
+        } catch {
+          setAnalysisStatus('Analysis complete');
+        } finally {
+          setIsAnalyzing(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  // Live Meta Muse Spark Open Reasoning Trigger
   async function handleAnalyse() {
     setIsAnalyzing(true);
-    setAnalysisStatus('Querying Meta Muse Spark Open...');
+    setAnalysisStatus('Consulting Meta Muse Spark Open on Baseten...');
 
     try {
       const result = await analyzeFacialGeometryWithMuse(metrics);
@@ -60,34 +108,47 @@ export default function HomeScreen() {
           ? `Prescribed by Muse Spark Open (${result.latencyMs}ms)`
           : `Harmonic Calculation Complete (${result.latencyMs}ms)`
       );
-    } catch (err) {
+    } catch {
       setAnalysisStatus('Analysis completed');
     } finally {
       setIsAnalyzing(false);
     }
   }
 
-  // Trigger zero-shot try-on simulation on Modal serverless GPUs
-  async function handleTryOn(styleId: string) {
-    setAnalysisStatus('Dispatching to Modal Serverless GPU...');
-    try {
-      await simulateHairstyleOnModal({
-        userImageUri: activePreset.imageUrl,
-        styleId,
-        volumeProfile: currentPrescription.volumeProfile,
-      });
-      setAnalysisStatus('Try-On Generated via Modal');
-    } catch (e) {
-      setAnalysisStatus('Simulation completed');
-    }
+  // Trigger Generative Try-On Modal
+  function handleOpenTryOn(styleId: string) {
+    const allStyles = [...currentPrescription.suggestedStyles, ...HAIRCUT_DATASET];
+    const found = allStyles.find((s) => s.id === styleId) || currentPrescription.suggestedStyles[0];
+    setActiveTryOnStyle(found);
+    setTryOnVisible(true);
   }
+
+  // Filtered styles list
+  const filteredStyles = currentPrescription.suggestedStyles.filter((style) => {
+    if (selectedFilter === 'All') return true;
+    if (selectedFilter === 'Fringe') return style.name.toLowerCase().includes('fringe') || style.category.toLowerCase().includes('crop');
+    if (selectedFilter === 'Quiff') return style.name.toLowerCase().includes('quiff') || style.category.toLowerCase().includes('pompadour');
+    if (selectedFilter === 'Taper') return style.name.toLowerCase().includes('taper') || style.name.toLowerCase().includes('layer');
+    return true;
+  });
 
   return (
     <View style={[styles.root, { backgroundColor: colors.bg }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
 
+      {/* Hidden web file input for live photo upload */}
+      {Platform.OS === 'web' && (
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileSelected}
+          accept="image/*"
+          style={{ display: 'none' }}
+        />
+      )}
+
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        {/* ── Top Navigation Bar ── */}
+        {/* ── Top Bar ── */}
         <View
           style={[
             styles.topBar,
@@ -104,18 +165,11 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Controls: Theme Switcher & HUD Toggle */}
           <View style={styles.topControls}>
             {/* Theme Toggle (Cream ☀️ / Dark 🌙) */}
             <Pressable
               onPress={toggleTheme}
-              style={[
-                styles.iconBtn,
-                {
-                  backgroundColor: colors.bgSubtle,
-                  borderColor: colors.border,
-                },
-              ]}
+              style={[styles.iconBtn, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}
               accessibilityLabel="Toggle between Cream and Obsidian theme"
             >
               <Text style={styles.iconBtnText}>{mode === 'light' ? '☀️ Cream' : '🌙 Dark'}</Text>
@@ -132,18 +186,8 @@ export default function HomeScreen() {
                 },
               ]}
             >
-              <View
-                style={[
-                  styles.hudDot,
-                  { backgroundColor: hudVisible ? colors.accent : colors.textMuted },
-                ]}
-              />
-              <Text
-                style={[
-                  styles.hudBtnText,
-                  { color: hudVisible ? colors.accent : colors.textMuted },
-                ]}
-              >
+              <View style={[styles.hudDot, { backgroundColor: hudVisible ? colors.accent : colors.textMuted }]} />
+              <Text style={[styles.hudBtnText, { color: hudVisible ? colors.accent : colors.textMuted }]}>
                 HUD {hudVisible ? 'ON' : 'OFF'}
               </Text>
             </Pressable>
@@ -156,33 +200,24 @@ export default function HomeScreen() {
           showsVerticalScrollIndicator={false}
           bounces={true}
         >
-          {/* ── iOS Segmented Preset Selector ── */}
-          <View style={styles.segmentWrapper}>
+          {/* ── Segmented Control & Live Upload Bar ── */}
+          <View style={styles.inputControlsWrapper}>
             <View style={[styles.segmentTrack, { backgroundColor: colors.bgSegment }]}>
               {PRESET_SAMPLES.map((preset, idx) => {
-                const isSelected = idx === activePresetIdx;
+                const isSelected = idx === activePresetIdx && !customPhotoUri;
                 return (
                   <Pressable
                     key={preset.label}
                     onPress={() => handleSelectPreset(idx)}
                     style={[
                       styles.segmentItem,
-                      isSelected && [
-                        styles.segmentItemSelected,
-                        {
-                          backgroundColor: colors.bgElevated,
-                          shadowColor: colors.cardShadow,
-                        },
-                      ],
+                      isSelected && [styles.segmentItemSelected, { backgroundColor: colors.bgElevated }],
                     ]}
                   >
                     <Text
                       style={[
                         styles.segmentText,
-                        {
-                          color: isSelected ? colors.text : colors.textSecondary,
-                          fontWeight: isSelected ? '700' : '500',
-                        },
+                        { color: isSelected ? colors.text : colors.textSecondary, fontWeight: isSelected ? '700' : '500' },
                       ]}
                     >
                       {preset.label}
@@ -191,6 +226,22 @@ export default function HomeScreen() {
                 );
               })}
             </View>
+
+            {/* Live Upload Photo Action */}
+            <Pressable
+              style={[
+                styles.uploadBtn,
+                {
+                  backgroundColor: customPhotoUri ? colors.accentLight : colors.bgElevated,
+                  borderColor: customPhotoUri ? colors.accent : colors.border,
+                },
+              ]}
+              onPress={handleTriggerUpload}
+            >
+              <Text style={[styles.uploadBtnText, { color: customPhotoUri ? colors.accent : colors.text }]}>
+                {customPhotoUri ? '✓ Your Photo Active' : '📷 Upload Live Photo'}
+              </Text>
+            </Pressable>
           </View>
 
           {/* ── Portrait Viewport with Biometric Overlay ── */}
@@ -206,7 +257,7 @@ export default function HomeScreen() {
               ]}
             >
               <Image
-                source={{ uri: activePreset.imageUrl }}
+                source={{ uri: displayImageUri }}
                 style={styles.portraitImage}
                 resizeMode="cover"
               />
@@ -214,7 +265,7 @@ export default function HomeScreen() {
               {/* Aesthetic Biometric Overlay */}
               <BiometricOverlay visible={hudVisible} metrics={metrics} />
 
-              {/* Top-right Morphology Badge */}
+              {/* Morphology Badge */}
               <View style={[styles.floatingBadge, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}>
                 <Text style={[styles.floatingBadgeText, { color: colors.accent }]}>
                   {metrics.faceShape.toUpperCase()} · φ {metrics.goldenRatioDeviation.toFixed(2)}
@@ -224,25 +275,20 @@ export default function HomeScreen() {
               {/* Bottom Analyse Action Bar */}
               <View style={styles.analyseBar}>
                 <Pressable
-                  style={[
-                    styles.analyseButton,
-                    {
-                      backgroundColor: colors.accent,
-                    },
-                  ]}
+                  style={[styles.analyseButton, { backgroundColor: colors.accent }]}
                   onPress={handleAnalyse}
                   disabled={isAnalyzing}
                 >
                   {isAnalyzing ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <Text style={styles.analyseButtonText}>✦  ANALYSE WITH MUSE</Text>
+                    <Text style={styles.analyseButtonText}>✦  ANALYSE WITH MUSE SPARK OPEN</Text>
                   )}
                 </Pressable>
               </View>
             </View>
 
-            {/* Status notification */}
+            {/* Status bar */}
             {analysisStatus && (
               <View style={[styles.statusBar, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
                 <Text style={[styles.statusText, { color: colors.accent }]}>
@@ -252,34 +298,60 @@ export default function HomeScreen() {
             )}
           </View>
 
-          {/* ── Neoclassical Anthropometric Dossier ── */}
+          {/* ── Short & Magnetic Metric Dossier ── */}
           <MetricCards metrics={metrics} />
 
-          {/* ── Prescription Lookbook Section ── */}
+          {/* ── Recommended Styles Section ── */}
           <View style={styles.prescriptionSection}>
             <View style={styles.consultationHeader}>
-              <Text style={[styles.consultationOverline, { color: colors.accent }]}>
-                BESPOKE ARCHITECTURAL PRESCRIPTION
-              </Text>
-              <Text style={[styles.prescriptionTitle, { color: colors.text }]}>
-                {currentPrescription.haircutName}
-              </Text>
+              <View style={styles.prescriptionTitleRow}>
+                <Text style={[styles.prescriptionTitle, { color: colors.text }]}>
+                  {currentPrescription.haircutName}
+                </Text>
+                <View style={[styles.prescribedPill, { backgroundColor: colors.accentGreenLight }]}>
+                  <Text style={[styles.prescribedPillText, { color: colors.accentGreen }]}>BEST MATCH</Text>
+                </View>
+              </View>
+              {/* Short & precise 1-liner rationale */}
               <Text style={[styles.prescriptionRationale, { color: colors.textSecondary }]}>
-                {currentPrescription.rationalization}
+                ✦ {currentPrescription.rationalization}
               </Text>
+            </View>
+
+            {/* Category Filter Pills (Discover More Styles) */}
+            <View style={styles.filterRow}>
+              {(['All', 'Fringe', 'Quiff', 'Taper'] as const).map((filter) => (
+                <Pressable
+                  key={filter}
+                  onPress={() => setSelectedFilter(filter)}
+                  style={[
+                    styles.filterChip,
+                    {
+                      backgroundColor: selectedFilter === filter ? colors.accentLight : colors.bgSubtle,
+                      borderColor: selectedFilter === filter ? colors.accent : colors.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      { color: selectedFilter === filter ? colors.accent : colors.textSecondary, fontWeight: selectedFilter === filter ? '700' : '500' },
+                    ]}
+                  >
+                    {filter === 'All' ? 'All Cuts' : filter}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
 
             {/* Recommended Hairstyle Cards */}
             <View style={styles.stylesList}>
-              <Text style={[styles.stylesListTitle, { color: colors.textSecondary }]}>
-                CURATED ARCHITECTURAL SILHOUETTES
-              </Text>
-              {currentPrescription.suggestedStyles.map((style) => (
+              {filteredStyles.map((style) => (
                 <StyleCard
                   key={style.id}
                   style={style}
                   volumeProfile={currentPrescription.volumeProfile}
-                  onTryOn={handleTryOn}
+                  onTryOn={handleOpenTryOn}
                 />
               ))}
             </View>
@@ -289,6 +361,15 @@ export default function HomeScreen() {
           <View style={{ height: 48 }} />
         </ScrollView>
       </SafeAreaView>
+
+      {/* Generative Try-On Simulation Modal */}
+      <TryOnModal
+        visible={tryOnVisible}
+        onClose={() => setTryOnVisible(false)}
+        styleOption={activeTryOnStyle}
+        volumeProfile={currentPrescription.volumeProfile}
+        originalImageUri={displayImageUri}
+      />
     </View>
   );
 }
@@ -367,10 +448,11 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 24,
   },
-  segmentWrapper: {
+  inputControlsWrapper: {
     paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 10,
+    paddingTop: 12,
+    paddingBottom: 6,
+    gap: 8,
   },
   segmentTrack: {
     flexDirection: 'row',
@@ -379,34 +461,45 @@ const styles = StyleSheet.create({
   },
   segmentItem: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 7,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 11,
   },
   segmentItemSelected: {
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
     elevation: 2,
   },
   segmentText: {
-    fontSize: 13,
+    fontSize: 12,
+  },
+  uploadBtn: {
+    paddingVertical: 9,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  uploadBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   viewportContainer: {
     paddingHorizontal: 20,
     marginVertical: 4,
-    gap: 8,
+    gap: 6,
   },
   viewportCard: {
-    height: 380,
-    borderRadius: 24,
+    height: 360,
+    borderRadius: 22,
     overflow: 'hidden',
     borderWidth: 1,
     position: 'relative',
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 1,
-    shadowRadius: 16,
+    shadowRadius: 14,
     elevation: 4,
   },
   portraitImage: {
@@ -415,83 +508,101 @@ const styles = StyleSheet.create({
   },
   floatingBadge: {
     position: 'absolute',
-    top: 14,
-    right: 14,
-    paddingHorizontal: 11,
-    paddingVertical: 5,
-    borderRadius: 12,
+    top: 12,
+    right: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
     borderWidth: 1,
   },
   floatingBadgeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.8,
   },
   analyseBar: {
     position: 'absolute',
-    bottom: 16,
-    left: 20,
-    right: 20,
+    bottom: 14,
+    left: 18,
+    right: 18,
     alignItems: 'center',
   },
   analyseButton: {
     width: '100%',
-    paddingVertical: 13,
-    borderRadius: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
     elevation: 3,
   },
   analyseButtonText: {
     color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 1,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.8,
   },
   statusBar: {
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
     borderWidth: 1,
     alignSelf: 'center',
   },
   statusText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
   },
   prescriptionSection: {
     paddingHorizontal: 20,
-    marginTop: 8,
+    marginTop: 6,
   },
   consultationHeader: {
-    gap: 6,
-    marginBottom: 16,
+    gap: 4,
+    marginBottom: 10,
   },
-  consultationOverline: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1.2,
+  prescriptionTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   prescriptionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     letterSpacing: -0.3,
   },
+  prescribedPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  prescribedPillText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
   prescriptionRationale: {
-    fontSize: 13,
-    lineHeight: 19,
-    fontWeight: '400',
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '500',
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 12,
+  },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  filterChipText: {
+    fontSize: 11,
   },
   stylesList: {
-    gap: 4,
-  },
-  stylesListTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1,
-    marginBottom: 8,
+    gap: 2,
   },
 });

@@ -1,180 +1,304 @@
-import { Image } from 'expo-image';
-import { SymbolView } from 'expo-symbols';
-import { Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+// ─── Learn / Biometric Architecture Guide ────────────────────────────────────
+// Short, precise, and visually magnetic education on Golden Ratio (φ ≈ 1.618),
+// Neoclassical Farkas thirds, and volumetric haircut compensation.
 
-import { ExternalLink } from '@/components/external-link';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Collapsible } from '@/components/ui/collapsible';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import React from 'react';
+import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAppTheme } from '@/context/ThemeContext';
 
-export default function TabTwoScreen() {
-  const safeAreaInsets = useSafeAreaInsets();
-  const insets = {
-    ...safeAreaInsets,
-    bottom: safeAreaInsets.bottom + BottomTabInset + Spacing.three,
-  };
-  const theme = useTheme();
-
-  const contentPlatformStyle = Platform.select({
-    android: {
-      paddingTop: insets.top,
-      paddingLeft: insets.left,
-      paddingRight: insets.right,
-      paddingBottom: insets.bottom,
-    },
-    web: {
-      paddingTop: Spacing.six,
-      paddingBottom: Spacing.four,
-    },
-  });
+export default function LearnScreen() {
+  const { colors, isDark } = useAppTheme();
 
   return (
-    <ScrollView
-      style={[styles.scrollView, { backgroundColor: theme.background }]}
-      contentInset={insets}
-      contentContainerStyle={[styles.contentContainer, contentPlatformStyle]}>
-      <ThemedView style={styles.container}>
-        <ThemedView style={styles.titleContainer}>
-          <ThemedText type="subtitle">Explore</ThemedText>
-          <ThemedText style={styles.centerText} themeColor="textSecondary">
-            This starter app includes example{'\n'}code to help you get started.
-          </ThemedText>
+    <View style={[styles.root, { backgroundColor: colors.bg }]}>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        {/* Header */}
+        <View style={[styles.header, { backgroundColor: colors.bgElevated, borderBottomColor: colors.border }]}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>HAIR ARCHITECTURE GUIDE</Text>
+          <View style={[styles.badge, { backgroundColor: colors.accentLight }]}>
+            <Text style={[styles.badgeText, { color: colors.accent }]}>THE SCIENCE OF φ</Text>
+          </View>
+        </View>
 
-          <ExternalLink href="https://docs.expo.dev" asChild>
-            <Pressable style={({ pressed }) => pressed && styles.pressed}>
-              <ThemedView type="backgroundElement" style={styles.linkButton}>
-                <ThemedText type="link">Expo documentation</ThemedText>
-                <SymbolView
-                  tintColor={theme.text}
-                  name={{ ios: 'arrow.up.right.square', android: 'link', web: 'link' }}
-                  size={12}
-                />
-              </ThemedView>
-            </Pressable>
-          </ExternalLink>
-        </ThemedView>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* ── 1. The Golden Ratio ── */}
+          <View style={[styles.card, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}>
+            <View style={styles.cardHeader}>
+              <Text style={[styles.cardTag, { color: colors.accent }]}>01 · THE DIVINE PROPORTION</Text>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>The Golden Ratio (φ 1.618)</Text>
+            </View>
 
-        <ThemedView style={styles.sectionsWrapper}>
-          <Collapsible title="File-based routing">
-            <ThemedText type="small">
-              This app has two screens: <ThemedText type="code">src/app/index.tsx</ThemedText> and{' '}
-              <ThemedText type="code">src/app/explore.tsx</ThemedText>
-            </ThemedText>
-            <ThemedText type="small">
-              The layout file in <ThemedText type="code">src/app/_layout.tsx</ThemedText> sets up
-              the tab navigator.
-            </ThemedText>
-            <ExternalLink href="https://docs.expo.dev/router/introduction">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
+            <View style={styles.bulletList}>
+              <View style={styles.bulletItem}>
+                <Text style={[styles.bulletIcon, { color: colors.accent }]}>✦</Text>
+                <Text style={[styles.bulletText, { color: colors.textSecondary }]}>
+                  <Text style={[styles.bold, { color: colors.text }]}>What it is: </Text>
+                  The geometric proportion ($1 : 1.618$) observed in classical Greek sculpture and Renaissance anatomy.
+                </Text>
+              </View>
 
-          <Collapsible title="Android, iOS, and web support">
-            <ThemedView type="backgroundElement" style={styles.collapsibleContent}>
-              <ThemedText type="small">
-                You can open this project on Android, iOS, and the web. To open the web version,
-                press <ThemedText type="smallBold">w</ThemedText> in the terminal running this
-                project.
-              </ThemedText>
-              <Image
-                source={require('@/assets/images/tutorial-web.png')}
-                style={styles.imageTutorial}
-              />
-            </ThemedView>
-          </Collapsible>
+              <View style={styles.bulletItem}>
+                <Text style={[styles.bulletIcon, { color: colors.accent }]}>✦</Text>
+                <Text style={[styles.bulletText, { color: colors.textSecondary }]}>
+                  <Text style={[styles.bold, { color: colors.text }]}>How Hair Fixes It: </Text>
+                  A haircut is architectural framing. By adding crown height or temple width, hair shifts your perceived facial aspect ratio directly toward 1.618.
+                </Text>
+              </View>
+            </View>
+          </View>
 
-          <Collapsible title="Images">
-            <ThemedText type="small">
-              For static images, you can use the <ThemedText type="code">@2x</ThemedText> and{' '}
-              <ThemedText type="code">@3x</ThemedText> suffixes to provide files for different
-              screen densities.
-            </ThemedText>
-            <Image source={require('@/assets/images/react-logo.png')} style={styles.imageReact} />
-            <ExternalLink href="https://reactnative.dev/docs/images">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
+          {/* ── 2. The Neoclassical Farkas Thirds ── */}
+          <View style={[styles.card, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}>
+            <View style={styles.cardHeader}>
+              <Text style={[styles.cardTag, { color: colors.accent }]}>02 · ANTHROPOMETRIC BALANCE</Text>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>Farkas Vertical Thirds (33% Rule)</Text>
+            </View>
 
-          <Collapsible title="Light and dark mode components">
-            <ThemedText type="small">
-              This template has light and dark mode support. The{' '}
-              <ThemedText type="code">useColorScheme()</ThemedText> hook lets you inspect what the
-              user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-            </ThemedText>
-            <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
+            <View style={[styles.thirdsDiagram, { backgroundColor: colors.bgSubtle }]}>
+              <View style={[styles.diagramPart, { borderColor: colors.border }]}>
+                <Text style={[styles.diagramLabel, { color: colors.textMuted }]}>UPPER THIRD (33%)</Text>
+                <Text style={[styles.diagramDesc, { color: colors.text }]}>Trichion (Hairline) → Glabella (Brow)</Text>
+              </View>
+              <View style={[styles.diagramPart, { borderColor: colors.border }]}>
+                <Text style={[styles.diagramLabel, { color: colors.textMuted }]}>MID THIRD (33%)</Text>
+                <Text style={[styles.diagramDesc, { color: colors.text }]}>Glabella (Brow) → Subnasale (Nose)</Text>
+              </View>
+              <View style={[styles.diagramPart, { borderColor: colors.border }]}>
+                <Text style={[styles.diagramLabel, { color: colors.textMuted }]}>LOWER THIRD (33%)</Text>
+                <Text style={[styles.diagramDesc, { color: colors.text }]}>Subnasale (Nose) → Gnathion (Chin)</Text>
+              </View>
+            </View>
 
-          <Collapsible title="Animations">
-            <ThemedText type="small">
-              This template includes an example of an animated component. The{' '}
-              <ThemedText type="code">src/components/ui/collapsible.tsx</ThemedText> component uses
-              the powerful <ThemedText type="code">react-native-reanimated</ThemedText> library to
-              animate opening this hint.
-            </ThemedText>
-          </Collapsible>
-        </ThemedView>
-        {Platform.OS === 'web' && <WebBadge />}
-      </ThemedView>
-    </ScrollView>
+            <Text style={[styles.quickTip, { color: colors.textSecondary }]}>
+              💡 If your Upper Third &gt; 35%, a curtain fringe or textured crop visually lowers your hairline to restore the 33.3% canonical equilibrium.
+            </Text>
+          </View>
+
+          {/* ── 3. Face Morphology Cheat Sheet ── */}
+          <View style={[styles.card, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}>
+            <View style={styles.cardHeader}>
+              <Text style={[styles.cardTag, { color: colors.accent }]}>03 · MORPHOLOGY RULES</Text>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>What Works for Your Face</Text>
+            </View>
+
+            <View style={styles.morphologyGrid}>
+              <View style={[styles.morphCard, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
+                <Text style={[styles.morphTitle, { color: colors.text }]}>OBLONG</Text>
+                <Text style={[styles.morphRule, { color: colors.accentGreen }]}>✓ Widen temples + add fringe</Text>
+                <Text style={[styles.morphRuleBad, { color: colors.textMuted }]}>✕ Avoid tall quiffs</Text>
+              </View>
+
+              <View style={[styles.morphCard, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
+                <Text style={[styles.morphTitle, { color: colors.text }]}>ROUND</Text>
+                <Text style={[styles.morphRule, { color: colors.accentGreen }]}>✓ Elevate crown + tight fade</Text>
+                <Text style={[styles.morphRuleBad, { color: colors.textMuted }]}>✕ Avoid wide side volume</Text>
+              </View>
+
+              <View style={[styles.morphCard, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
+                <Text style={[styles.morphTitle, { color: colors.text }]}>SQUARE</Text>
+                <Text style={[styles.morphRule, { color: colors.accentGreen }]}>✓ Soft waves &amp; curved lines</Text>
+                <Text style={[styles.morphRuleBad, { color: colors.textMuted }]}>✕ Avoid boxy blunt edges</Text>
+              </View>
+
+              <View style={[styles.morphCard, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
+                <Text style={[styles.morphTitle, { color: colors.text }]}>OVAL</Text>
+                <Text style={[styles.morphRule, { color: colors.accentGreen }]}>✓ Naturally balanced (Any cut)</Text>
+                <Text style={[styles.morphRuleBad, { color: colors.textMuted }]}>✕ Avoid covering eyes</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* ── 4. The AI Compute Engine ── */}
+          <View style={[styles.card, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}>
+            <View style={styles.cardHeader}>
+              <Text style={[styles.cardTag, { color: colors.accent }]}>04 · THE AI PIPELINE</Text>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>How Biometric Hair Arch Works</Text>
+            </View>
+
+            <View style={styles.pipelineRow}>
+              <View style={[styles.pipeStep, { backgroundColor: colors.bgSubtle }]}>
+                <Text style={[styles.pipeNum, { color: colors.accent }]}>1</Text>
+                <Text style={[styles.pipeTitle, { color: colors.text }]}>MediaPipe</Text>
+                <Text style={[styles.pipeDesc, { color: colors.textSecondary }]}>468 3D Landmarks</Text>
+              </View>
+
+              <View style={[styles.pipeStep, { backgroundColor: colors.bgSubtle }]}>
+                <Text style={[styles.pipeNum, { color: colors.accent }]}>2</Text>
+                <Text style={[styles.pipeTitle, { color: colors.text }]}>Baseten</Text>
+                <Text style={[styles.pipeDesc, { color: colors.textSecondary }]}>Muse Spark Open</Text>
+              </View>
+
+              <View style={[styles.pipeStep, { backgroundColor: colors.bgSubtle }]}>
+                <Text style={[styles.pipeNum, { color: colors.accent }]}>3</Text>
+                <Text style={[styles.pipeTitle, { color: colors.text }]}>Modal GPU</Text>
+                <Text style={[styles.pipeDesc, { color: colors.textSecondary }]}>Meta SAM 3.1 Inpaint</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Safe spacer */}
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  headerTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+  },
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  badgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
   scrollView: {
     flex: 1,
   },
-  contentContainer: {
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 32,
+    gap: 16,
+  },
+  card: {
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: 18,
+    gap: 14,
+  },
+  cardHeader: {
+    gap: 3,
+  },
+  cardTag: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  bulletList: {
+    gap: 10,
+  },
+  bulletItem: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    alignItems: 'flex-start',
+    gap: 8,
   },
-  container: {
-    maxWidth: MaxContentWidth,
-    flexGrow: 1,
+  bulletIcon: {
+    fontSize: 12,
+    lineHeight: 18,
   },
-  titleContainer: {
-    gap: Spacing.three,
+  bulletText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  bold: {
+    fontWeight: '700',
+  },
+  thirdsDiagram: {
+    borderRadius: 14,
+    padding: 10,
+    gap: 6,
+  },
+  diagramPart: {
+    borderLeftWidth: 3,
+    paddingLeft: 10,
+    paddingVertical: 3,
+    gap: 1,
+  },
+  diagramLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+  },
+  diagramDesc: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  quickTip: {
+    fontSize: 12,
+    lineHeight: 17,
+    fontStyle: 'italic',
+  },
+  morphologyGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  morphCard: {
+    width: '48%',
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 3,
+  },
+  morphTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  morphRule: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  morphRuleBad: {
+    fontSize: 10,
+    fontWeight: '500',
+  },
+  pipelineRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  pipeStep: {
+    flex: 1,
+    padding: 10,
+    borderRadius: 12,
     alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.six,
+    gap: 3,
   },
-  centerText: {
+  pipeNum: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  pipeTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  pipeDesc: {
+    fontSize: 9,
+    fontWeight: '500',
     textAlign: 'center',
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-  linkButton: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-    borderRadius: Spacing.five,
-    justifyContent: 'center',
-    gap: Spacing.one,
-    alignItems: 'center',
-  },
-  sectionsWrapper: {
-    gap: Spacing.five,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
-  },
-  collapsibleContent: {
-    alignItems: 'center',
-  },
-  imageTutorial: {
-    width: '100%',
-    aspectRatio: 296 / 171,
-    borderRadius: Spacing.three,
-    marginTop: Spacing.two,
-  },
-  imageReact: {
-    width: 100,
-    height: 100,
-    alignSelf: 'center',
   },
 });
