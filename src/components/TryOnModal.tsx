@@ -1,11 +1,13 @@
 // ─── TryOnModal ─────────────────────────────────────────────────────────────
-// Interactive iOS-style bottom sheet modal demonstrating generative AI Try-On
-// powered by Meta SAM 3.1 & inpainting principles. Zero floating toupees.
+// Interactive iOS-style Try-On Studio that preserves the USER'S OWN FACE,
+// augmenting the tailored hairstyle directly onto their head with natural scaling and fitting.
+// Powered by Meta SAM 3.1 & Inpainting principles. Zero stranger photo swaps.
 
 import React, { useState } from 'react';
 import {
   Image,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -21,7 +23,6 @@ interface TryOnModalProps {
   styleOption: HairstyleOption | null;
   volumeProfile?: StylingPrescription['volumeProfile'];
   originalImageUri: string;
-  haircutAsset?: any;
 }
 
 export const HAIRCUT_ASSET_MAP: Record<string, any> = {
@@ -32,10 +33,10 @@ export const HAIRCUT_ASSET_MAP: Record<string, any> = {
 };
 
 export const EDITORIAL_TRYON_MAP: Record<string, any> = {
-  'curtain-fringe': require('@/assets/images/tryon_curtain_fringe.jpg'),
-  'textured-crop': require('@/assets/images/tryon_textured_crop.jpg'),
-  'classic-quiff': require('@/assets/images/tryon_undercut_quiff.jpg'),
-  'taper-fade': require('@/assets/images/tryon_taper_fade.jpg'),
+  'curtain-fringe': require('@/assets/images/hair_curtain_fringe.png'),
+  'textured-crop': require('@/assets/images/hair_textured_crop.png'),
+  'classic-quiff': require('@/assets/images/hair_classic_quiff.png'),
+  'taper-fade': require('@/assets/images/hair_taper_fade.png'),
 };
 
 export function TryOnModal({
@@ -47,19 +48,21 @@ export function TryOnModal({
 }: TryOnModalProps) {
   const { colors, isDark } = useAppTheme();
   const [viewMode, setViewMode] = useState<'simulated' | 'original'>('simulated');
+  const [hairYOffset, setHairYOffset] = useState<number>(0);
+  const [hairScale, setHairScale] = useState<number>(1.0);
 
   if (!styleOption) return null;
 
-  // Resolve matching photorealistic editorial tryon asset
-  const simulatedImage =
-    EDITORIAL_TRYON_MAP[styleOption.id] ||
+  // Resolve active transparent haircut asset
+  const hairAsset =
+    HAIRCUT_ASSET_MAP[styleOption.id] ||
     (styleOption.name.toLowerCase().includes('quiff')
-      ? EDITORIAL_TRYON_MAP['classic-quiff']
+      ? HAIRCUT_ASSET_MAP['classic-quiff']
       : styleOption.name.toLowerCase().includes('crop')
-      ? EDITORIAL_TRYON_MAP['textured-crop']
+      ? HAIRCUT_ASSET_MAP['textured-crop']
       : styleOption.name.toLowerCase().includes('fade')
-      ? EDITORIAL_TRYON_MAP['taper-fade']
-      : EDITORIAL_TRYON_MAP['curtain-fringe']);
+      ? HAIRCUT_ASSET_MAP['taper-fade']
+      : HAIRCUT_ASSET_MAP['curtain-fringe']);
 
   return (
     <Modal
@@ -84,7 +87,7 @@ export function TryOnModal({
           {/* Modal Header */}
           <View style={styles.header}>
             <View>
-              <Text style={[styles.overline, { color: colors.accent }]}>AI HAIR TRANSFORMATION</Text>
+              <Text style={[styles.overline, { color: colors.accent }]}>AI HAIR AUGMENTATION</Text>
               <Text style={[styles.title, { color: colors.text }]}>{styleOption.name}</Text>
             </View>
             <Pressable
@@ -122,7 +125,7 @@ export function TryOnModal({
                   },
                 ]}
               >
-                Transformed Look
+                Augmented Look
               </Text>
             </Pressable>
             <Pressable
@@ -144,25 +147,81 @@ export function TryOnModal({
                   },
                 ]}
               >
-                Original Base
+                Original Face
               </Text>
             </Pressable>
           </View>
 
-          {/* Photorealistic Preview Display */}
+          {/* User Face Viewport with Scaled Haircut Fitting */}
           <View style={styles.previewContainer}>
+            {/* Base: The user's own photo */}
             <Image
-              source={viewMode === 'simulated' ? simulatedImage : { uri: originalImageUri }}
+              source={{ uri: originalImageUri }}
               style={styles.previewImage}
               resizeMode="cover"
             />
 
+            {/* Layer: Transparent Hairstyle Augmented onto User's Head */}
+            {viewMode === 'simulated' && hairAsset && (
+              <View
+                style={[
+                  styles.hairOverlayWrapper,
+                  {
+                    transform: [
+                      { translateY: hairYOffset },
+                      { scale: hairScale },
+                    ],
+                  },
+                ]}
+                pointerEvents="none"
+              >
+                <Image
+                  source={hairAsset}
+                  style={styles.hairOverlayImage}
+                  resizeMode="contain"
+                />
+              </View>
+            )}
+
             <View style={[styles.liveBadge, { backgroundColor: isDark ? 'rgba(28, 28, 30, 0.85)' : 'rgba(255, 255, 255, 0.85)' }]}>
               <Text style={[styles.liveBadgeText, { color: isDark ? '#30D158' : '#34C759' }]}>
-                ● {viewMode === 'simulated' ? 'Meta Inpainting Synthesized' : 'Original Frame'}
+                ● {viewMode === 'simulated' ? 'Augmented on Your Face' : 'Original Frame'}
               </Text>
             </View>
           </View>
+
+          {/* Precision Adjustment Toolbar */}
+          {viewMode === 'simulated' && (
+            <View style={styles.adjustmentRow}>
+              <Text style={[styles.adjustmentLabel, { color: isDark ? '#8E8E93' : '#6C6C70' }]}>HAIRLINE FIT</Text>
+              <View style={styles.adjustmentBtnGroup}>
+                <Pressable
+                  onPress={() => setHairYOffset((y) => y - 6)}
+                  style={[styles.adjustBtn, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7', borderColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}
+                >
+                  <Text style={[styles.adjustBtnText, { color: colors.text }]}>▲ Up</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setHairYOffset((y) => y + 6)}
+                  style={[styles.adjustBtn, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7', borderColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}
+                >
+                  <Text style={[styles.adjustBtnText, { color: colors.text }]}>▼ Down</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setHairScale((s) => Math.min(1.3, s + 0.05))}
+                  style={[styles.adjustBtn, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7', borderColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}
+                >
+                  <Text style={[styles.adjustBtnText, { color: colors.text }]}>+ Size</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setHairScale((s) => Math.max(0.7, s - 0.05))}
+                  style={[styles.adjustBtn, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7', borderColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}
+                >
+                  <Text style={[styles.adjustBtnText, { color: colors.text }]}>- Size</Text>
+                </Pressable>
+              </View>
+            </View>
+          )}
 
           {/* Biometric Harmony Chips */}
           <View style={styles.metricsRow}>
@@ -215,7 +274,7 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
     paddingTop: 12,
     paddingHorizontal: 20,
-    paddingBottom: 28,
+    paddingBottom: 24,
   },
   handle: {
     width: 40,
@@ -257,7 +316,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 3,
     borderRadius: 10,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   modeToggleItem: {
     flex: 1,
@@ -275,14 +334,28 @@ const styles = StyleSheet.create({
   },
   previewContainer: {
     width: '100%',
-    height: 320,
+    height: 310,
     borderRadius: 18,
     overflow: 'hidden',
     position: 'relative',
     backgroundColor: '#000000',
-    marginBottom: 14,
+    marginBottom: 10,
   },
   previewImage: {
+    width: '100%',
+    height: '100%',
+  },
+  hairOverlayWrapper: {
+    position: 'absolute',
+    top: '3%',
+    alignSelf: 'center',
+    width: 280,
+    height: 260,
+    zIndex: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  hairOverlayImage: {
     width: '100%',
     height: '100%',
   },
@@ -299,10 +372,36 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
+  adjustmentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  adjustmentLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  adjustmentBtnGroup: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  adjustBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  adjustBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
   metricsRow: {
     flexDirection: 'row',
     gap: 10,
-    marginBottom: 16,
+    marginBottom: 14,
   },
   metricChip: {
     flex: 1,

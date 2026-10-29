@@ -1,7 +1,7 @@
-// ─── LiveCameraView ─────────────────────────────────────────────────────────
-// Snapchat/Lensa-style live camera viewfinder with real-time AR face alignment reticle,
-// bulletproof webcam streaming with zero black screens, and hardware shutoff controls.
-// Note: Floating 2D hair wigs have been completely removed from the live camera.
+// ─── LiveCameraView (Real-time AR Snapchat-Style Face Tracking) ─────────────
+// Real-time camera viewfinder with hardware power control, Neoclassical reticle,
+// and real-time head motion tracking that dynamically anchors the transparent hair wig
+// to the user's forehead as they move in front of their laptop camera.
 
 import React, { useCallback, useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import {
@@ -31,6 +31,8 @@ interface LiveCameraViewProps {
   onCameraActive?: (active: boolean) => void;
   cameraEnabled?: boolean;
   onToggleCamera?: () => void;
+  augmentedHairAsset?: any;
+  showAugmentation?: boolean;
 }
 
 export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>(
@@ -42,22 +44,38 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
       onCameraActive,
       cameraEnabled = true,
       onToggleCamera,
+      augmentedHairAsset,
+      showAugmentation = true,
     },
     ref
   ) => {
     const { colors, isDark } = useAppTheme();
     const [hasCameraStream, setHasCameraStream] = useState(false);
     const [cameraPermissionError, setCameraPermissionError] = useState(false);
+
+    // Dynamic Head Pose tracking (moves with user like Snapchat)
+    const [headPose, setHeadPose] = useState<{
+      x: number;
+      y: number;
+      scale: number;
+    }>({
+      x: 50,
+      y: 28,
+      scale: 1.0,
+    });
+
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
+    const trackingCanvasRef = useRef<HTMLCanvasElement | null>(null);
+    const trackingIntervalRef = useRef<any>(null);
 
-    // Multi-tier fallback getUserMedia to ensure compatibility with all laptop webcams
+    // Multi-tier fallback getUserMedia for Windows laptop webcams
     async function requestWebcamStream(): Promise<MediaStream> {
       if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
         throw new Error('Webcam API is not supported in this browser.');
       }
 
-      // Tier 1: Try user-facing camera with ideal resolution
+      // Tier 1: User facing camera
       try {
         return await navigator.mediaDevices.getUserMedia({
           video: {
@@ -71,7 +89,7 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
         console.warn('[Camera] Tier 1 failed, trying generic video constraint:', err1);
       }
 
-      // Tier 2: Generic video constraint (crucial for Windows laptop built-in webcams)
+      // Tier 2: Generic video constraint
       try {
         return await navigator.mediaDevices.getUserMedia({
           video: true,
@@ -88,7 +106,7 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
       });
     }
 
-    // Attach stream to video DOM element with complete autoplay compliance
+    // Attach stream to video element with full autoplay compliance
     const attachStreamToVideo = useCallback((stream: MediaStream | null) => {
       const video = videoRef.current;
       if (!video) return;
@@ -100,7 +118,7 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
         video.autoplay = true;
         video.srcObject = stream;
         video.onloadedmetadata = () => {
-          video.play().catch((e) => console.log('[Camera] Autoplay pending click:', e));
+          video.play().catch((e) => console.log('[Camera] Autoplay waiting:', e));
         };
         video.play().catch(() => {});
       } else {
@@ -108,7 +126,6 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
       }
     }, []);
 
-    // Callback ref ensures stream connects instantly upon DOM mount
     const setVideoElement = useCallback(
       (node: HTMLVideoElement | null) => {
         videoRef.current = node;
@@ -147,6 +164,136 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
       setHasCameraStream(false);
       onCameraActive?.(false);
     }
+
+    // Real-Time AR Face Tracking Loop (Snapchat filter physics)
+    useEffect(() => {
+      if (!hasCameraStream || !cameraEnabled || Platform.OS !== 'web') {
+        if (trackingIntervalRef.current) clearInterval(trackingIntervalRef.current);
+        return;
+      }
+
+      // Check if native FaceDetector is available in Chromium
+      const NativeFaceDetector = typeof window !== 'undefined' ? (window as any).FaceDetector : null;
+      let faceDetectorInstance: any = null;
+      if (NativeFaceDetector) {
+        try {
+          faceDetectorInstance = new NativeFaceDetector({ fastMode: true, maxDetectedFaces: 1 });
+        } catch {
+          faceDetectorInstance = null;
+        }
+      }
+
+      trackingIntervalRef.current = setInterval(async () => {
+        const video = videoRef.current;
+        if (!video || video.paused || video.ended || video.videoWidth === 0) return;
+
+        // Path A: Native hardware-accelerated FaceDetector API
+        if (faceDetectorInstance) {
+          try {
+            const faces = await faceDetectorInstance.detect(video);
+            if (faces && faces.length > 0) {
+              const box = faces[0].boundingBox;
+              const videoW = video.videoWidth || 640;
+              const videoH = video.videoHeight || 480;
+
+              // Mirrored video horizontally
+              const faceCenterX = box.x + box.width / 2;
+              const mirroredPctX = 100 - (faceCenterX / videoW) * 100;
+              const hairlinePctY = (box.y / videoH) * 100;
+              const scale = Math.min(1.4, Math.max(0.7, box.width / (videoW * 0.35)));
+
+              setHeadPose((prev) => ({
+                x: prev.x * 0.70 + mirroredPctX * 0.30,
+                y: prev.y * 0.70 + hairlinePctY * 0.30,
+                scale: prev.scale * 0.70 + scale * 0.30,
+              }));
+              return;
+            }
+          } catch {
+            // Fall back to computer vision canvas tracker
+          }
+        }
+
+        // Path B: Robust Head Isolation Canvas Tracker (Torso & Shirtless Rejection)
+        if (!trackingCanvasRef.current) {
+          trackingCanvasRef.current = document.createElement('canvas');
+          trackingCanvasRef.current.width = 120;
+          trackingCanvasRef.current.height = 90;
+        }
+
+        const canvas = trackingCanvasRef.current;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) return;
+
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imgData.data;
+
+        // Pass 1: Find the uppermost cluster (the head/forehead)
+        let topY = canvas.height;
+        for (let y = 0; y < canvas.height; y++) {
+          let skinRowPixels = 0;
+          for (let x = 0; x < canvas.width; x++) {
+            const idx = (y * canvas.width + x) * 4;
+            const r = data[idx];
+            const g = data[idx + 1];
+            const b = data[idx + 2];
+            // Skin chrominance
+            if (r > 60 && g > 40 && b > 20 && r > g && r > b && (r - g) > 12) {
+              skinRowPixels++;
+            }
+          }
+          if (skinRowPixels >= 6) {
+            topY = y;
+            break;
+          }
+        }
+
+        if (topY >= canvas.height - 10) return; // No face detected
+
+        // Pass 2: Restrict tracking window to head only (avoid shirtless chest/shoulders)
+        const headMaxY = Math.min(canvas.height, topY + 45);
+        let sumX = 0;
+        let sumY = 0;
+        let count = 0;
+        let minX = canvas.width, maxX = 0;
+
+        for (let y = topY; y < headMaxY; y++) {
+          for (let x = 0; x < canvas.width; x++) {
+            const idx = (y * canvas.width + x) * 4;
+            const r = data[idx];
+            const g = data[idx + 1];
+            const b = data[idx + 2];
+            if (r > 60 && g > 40 && b > 20 && r > g && r > b && (r - g) > 12) {
+              sumX += x;
+              sumY += y;
+              count++;
+              if (x < minX) minX = x;
+              if (x > maxX) maxX = x;
+            }
+          }
+        }
+
+        // Smoothly interpolate tracking updates
+        if (count > 80 && maxX > minX) {
+          const rawCenterX = sumX / count;
+          const mirroredPctX = 100 - (rawCenterX / canvas.width) * 100;
+          const hairlinePctY = (topY / canvas.height) * 100;
+          const headWidth = maxX - minX;
+          const dynamicScale = Math.min(1.4, Math.max(0.7, headWidth / 36.0));
+
+          setHeadPose((prev) => ({
+            x: prev.x * 0.72 + mirroredPctX * 0.28,
+            y: prev.y * 0.72 + hairlinePctY * 0.28,
+            scale: prev.scale * 0.75 + dynamicScale * 0.25,
+          }));
+        }
+      }, 35); // ~30 FPS tracking update rate
+
+      return () => {
+        if (trackingIntervalRef.current) clearInterval(trackingIntervalRef.current);
+      };
+    }, [hasCameraStream, cameraEnabled]);
 
     // React to cameraEnabled prop changes
     useEffect(() => {
@@ -193,7 +340,7 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
 
     return (
       <View style={styles.container}>
-        {/* ── 1. Video Element (Always mounted on web when cameraEnabled, guaranteed stream binding) ── */}
+        {/* ── 1. Video Element (Mirrored Hardware Stream) ── */}
         {Platform.OS === 'web' && cameraEnabled && (
           <video
             ref={setVideoElement}
@@ -260,10 +407,36 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
           </View>
         ) : null}
 
-        {/* ── 3. AR Neoclassical Reticle Overlay (Clean Golden Ratio Oval) ── */}
+        {/* ── 3. AR Head-Tracking Hairstyle Wig (Moves with user like Snapchat) ── */}
+        {showAugmentation && augmentedHairAsset && hasCameraStream && cameraEnabled && !frozenImageUri && (
+          <View
+            style={[
+              styles.arWigAnchor,
+              {
+                left: `${headPose.x}%`,
+                top: `${headPose.y}%`,
+                width: 320 * headPose.scale,
+                height: 300 * headPose.scale,
+                transform: [
+                  { translateX: -160 * headPose.scale },
+                  { translateY: -180 * headPose.scale },
+                ],
+              },
+            ]}
+            pointerEvents="none"
+          >
+            <Image
+              source={augmentedHairAsset}
+              style={styles.arWigImage}
+              resizeMode="contain"
+            />
+          </View>
+        )}
+
+        {/* ── 4. AR Neoclassical Reticle Overlay (Clean Golden Ratio Oval) ── */}
         <BiometricOverlay visible={hudVisible} metrics={metrics} />
 
-        {/* ── 4. Status Pill ── */}
+        {/* ── 5. Status Pill ── */}
         <View style={styles.reticleBadgeWrapper}>
           <View
             style={[
@@ -284,7 +457,7 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
               {frozenImageUri
                 ? 'SNAPSHOT CAPTURED'
                 : hasCameraStream
-                ? 'LIVE WEBCAM'
+                ? 'LIVE AR MIRROR'
                 : 'ALIGN FACE IN GOLDEN OVAL'}
             </Text>
           </View>
@@ -374,6 +547,16 @@ const styles = StyleSheet.create({
     color: '#A8A29E',
     fontSize: 11,
     marginTop: 4,
+  },
+  arWigAnchor: {
+    position: 'absolute',
+    zIndex: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  arWigImage: {
+    width: '100%',
+    height: '100%',
   },
   reticleBadgeWrapper: {
     position: 'absolute',

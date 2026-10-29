@@ -226,6 +226,8 @@ export default function HomeScreen() {
         hudVisible={hudVisible}
         cameraEnabled={cameraEnabled}
         onToggleCamera={() => setCameraEnabled((v) => !v)}
+        augmentedHairAsset={activeLens.thumbnail}
+        showAugmentation={cameraEnabled && !capturedPhotoUri}
       />
 
       {/* ── 2. Top Controls (Pristine iOS Native Aesthetic) ── */}
