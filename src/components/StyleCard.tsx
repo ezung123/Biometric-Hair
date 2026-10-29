@@ -100,11 +100,6 @@ export function StyleCard({ style, volumeProfile, onTryOn }: StyleCardProps) {
                 </Text>
               </View>
             </View>
-
-            {/* Short, magnetic 1-sentence explanation */}
-            <Text style={[styles.whyText, { color: colors.textSecondary }]} numberOfLines={2}>
-              {style.whyItWorks}
-            </Text>
           </View>
         </View>
 

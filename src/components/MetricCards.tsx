@@ -1,6 +1,5 @@
 // ─── MetricCards (Harmonic Balance Dossier) ──────────────────────────────────
-// Short, punchy, visually magnetic Neoclassical biometric indicators.
-// Readable in 2 seconds with zero unnecessary clutter.
+// Ultra-clean, minimal biometric indicator. Zero dense text or reading paragraphs.
 
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -24,25 +23,8 @@ export function MetricCards({ metrics }: MetricCardsProps) {
 
   const { upperThirdPct, midThirdPct, lowerThirdPct } = metrics.verticalThirds;
 
-  // Punchy 1-line takeaways
-  const isElongated = metrics.facialIndex > 88;
-  const isRound = metrics.facialIndex < 82;
-
-  const takeaway1 = isElongated
-    ? '✦ Forehead: Fringe breaks vertical length by 22%'
-    : isRound
-    ? '✦ Crown: +25mm vertical height elongates face'
-    : '✦ Proportions: Naturally balanced Neoclassical ratio';
-
-  const takeaway2 = isElongated
-    ? '✦ Temples: Lateral volume balances elongated chin'
-    : isRound
-    ? '✦ Temples: Tight taper slims lateral width'
-    : '✦ Styling: Compatible with virtually any silhouette';
-
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
-      {/* ── Unified Primary Balance Card ── */}
       <View
         style={[
           styles.mainCard,
@@ -61,7 +43,7 @@ export function MetricCards({ metrics }: MetricCardsProps) {
               <Text style={[styles.scorePercent, { color: colors.accent }]}>%</Text>
             </Text>
             <Text style={[styles.scoreCaption, { color: colors.textSecondary }]}>
-              Golden Ratio Harmony (φ 1.618)
+              Golden Ratio Harmony (φ)
             </Text>
           </View>
 
@@ -77,16 +59,6 @@ export function MetricCards({ metrics }: MetricCardsProps) {
 
         {/* ── Neoclassical Thirds Continuous Bar ── */}
         <View style={styles.thirdsSection}>
-          <View style={styles.thirdsHeaderRow}>
-            <Text style={[styles.thirdsLabel, { color: colors.textSecondary }]}>
-              FARKAS VERTICAL THIRDS
-            </Text>
-            <Text style={[styles.baselineLabel, { color: colors.textMuted }]}>
-              Ideal: 33% each
-            </Text>
-          </View>
-
-          {/* Segmented bar */}
           <View style={[styles.triBarTrack, { backgroundColor: colors.bgSubtle }]}>
             <View
               style={[
@@ -117,7 +89,7 @@ export function MetricCards({ metrics }: MetricCardsProps) {
             />
           </View>
 
-          {/* Legend */}
+          {/* Simple Numbers */}
           <View style={styles.thirdsLegendRow}>
             <Text style={[styles.legendText, { color: colors.textSecondary }]}>
               Hairline <Text style={[styles.boldVal, { color: colors.text }]}>{upperThirdPct.toFixed(0)}%</Text>
@@ -126,15 +98,9 @@ export function MetricCards({ metrics }: MetricCardsProps) {
               Brow <Text style={[styles.boldVal, { color: colors.text }]}>{midThirdPct.toFixed(0)}%</Text>
             </Text>
             <Text style={[styles.legendText, { color: colors.textSecondary }]}>
-              Chin <Text style={[styles.boldVal, { color: colors.text }]}>{lowerThirdPct.toFixed(0)}%</Text>
+              Jaw <Text style={[styles.boldVal, { color: colors.text }]}>{lowerThirdPct.toFixed(0)}%</Text>
             </Text>
           </View>
-        </View>
-
-        {/* ── Magnetic Quick Takeaways (Short & Precise) ── */}
-        <View style={[styles.takeawayBox, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
-          <Text style={[styles.takeawayText, { color: colors.text }]}>{takeaway1}</Text>
-          <Text style={[styles.takeawayText, { color: colors.text }]}>{takeaway2}</Text>
         </View>
       </View>
     </View>
@@ -144,16 +110,17 @@ export function MetricCards({ metrics }: MetricCardsProps) {
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 6,
+    paddingTop: 8,
+    paddingBottom: 4,
   },
   mainCard: {
-    borderRadius: 22,
+    borderRadius: 20,
     borderWidth: 1,
-    padding: 16,
-    shadowOffset: { width: 0, height: 4 },
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 1,
-    shadowRadius: 10,
+    shadowRadius: 8,
     elevation: 2,
     gap: 12,
   },
@@ -166,10 +133,10 @@ const styles = StyleSheet.create({
     gap: 1,
   },
   scoreNumber: {
-    fontSize: 34,
+    fontSize: 32,
     fontWeight: '800',
     letterSpacing: -1,
-    lineHeight: 38,
+    lineHeight: 36,
   },
   scorePercent: {
     fontSize: 20,
@@ -182,7 +149,7 @@ const styles = StyleSheet.create({
   shapePill: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 14,
+    borderRadius: 12,
     alignItems: 'center',
     gap: 1,
   },
@@ -198,23 +165,9 @@ const styles = StyleSheet.create({
   thirdsSection: {
     gap: 6,
   },
-  thirdsHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  thirdsLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-  },
-  baselineLabel: {
-    fontSize: 10,
-    fontWeight: '500',
-  },
   triBarTrack: {
-    height: 7,
-    borderRadius: 3.5,
+    height: 6,
+    borderRadius: 3,
     flexDirection: 'row',
     overflow: 'hidden',
   },
@@ -231,17 +184,5 @@ const styles = StyleSheet.create({
   },
   boldVal: {
     fontWeight: '700',
-  },
-  takeawayBox: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 4,
-  },
-  takeawayText: {
-    fontSize: 12,
-    fontWeight: '600',
-    lineHeight: 16,
   },
 });

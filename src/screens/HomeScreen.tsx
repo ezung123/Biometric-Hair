@@ -312,10 +312,6 @@ export default function HomeScreen() {
                   <Text style={[styles.prescribedPillText, { color: colors.accentGreen }]}>BEST MATCH</Text>
                 </View>
               </View>
-              {/* Short & precise 1-liner rationale */}
-              <Text style={[styles.prescriptionRationale, { color: colors.textSecondary }]}>
-                ✦ {currentPrescription.rationalization}
-              </Text>
             </View>
 
             {/* Category Filter Pills (Discover More Styles) */}
