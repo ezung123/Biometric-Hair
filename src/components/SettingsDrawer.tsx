@@ -17,10 +17,10 @@ import { useAppTheme } from '@/context/ThemeContext';
 interface SettingsDrawerProps {
   visible: boolean;
   onClose: () => void;
-  onNavigateToLearn: () => void;
+  onOpenLearnAboutFace: () => void;
 }
 
-export function SettingsDrawer({ visible, onClose, onNavigateToLearn }: SettingsDrawerProps) {
+export function SettingsDrawer({ visible, onClose, onOpenLearnAboutFace }: SettingsDrawerProps) {
   const { colors, mode, toggleTheme, isDark } = useAppTheme();
 
   return (
@@ -80,19 +80,19 @@ export function SettingsDrawer({ visible, onClose, onNavigateToLearn }: Settings
             </View>
 
             {/* ── Education & Guide ── */}
-            <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>EDUCATION</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>EDUCATION &amp; SCIENCE</Text>
 
             <Pressable
               onPress={() => {
                 onClose();
-                onNavigateToLearn();
+                onOpenLearnAboutFace();
               }}
               style={[styles.rowCard, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}
             >
               <View>
-                <Text style={[styles.rowTitle, { color: colors.text }]}>Hair Architecture Guide</Text>
+                <Text style={[styles.rowTitle, { color: colors.text }]}>Learn About Your Face</Text>
                 <Text style={[styles.rowSubtitle, { color: colors.textSecondary }]}>
-                  The science of Golden Ratio φ &amp; Farkas thirds
+                  Golden Ratio φ, Farkas thirds &amp; morphology
                 </Text>
               </View>
               <Text style={[styles.arrowText, { color: colors.accent }]}>→</Text>

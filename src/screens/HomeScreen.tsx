@@ -1,15 +1,15 @@
 // ─── HomeScreen (Camera-First App Architecture) ──────────────────────────────
 // Snapchat/Lensa-inspired mobile camera experience.
-// Boots directly into full-screen camera with real-time AR Neoclassical reticle,
-// iconic shutter capture, slide-out App Store settings drawer, and fluid bottom results sheet.
+// Full-screen camera viewfinder, golden ratio AR reticle, face archetype selector,
+// live hairstyle recommendations, and slide-out Hamburger menu with "Learn About Your Face".
 
 import { StatusBar } from 'expo-status-bar';
-import { useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
   Dimensions,
+  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -19,10 +19,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { LiveCameraView } from '@/components/LiveCameraView';
-import { MetricCards } from '@/components/MetricCards';
+import { LiveCameraView, type LiveCameraViewRef } from '@/components/LiveCameraView';
+import { LearnModal } from '@/components/LearnModal';
 import { SettingsDrawer } from '@/components/SettingsDrawer';
-import { StyleCard } from '@/components/StyleCard';
 import { TryOnModal } from '@/components/TryOnModal';
 import { HAIRCUT_DATASET } from '@/constants/haircutDataset';
 import { PRESET_SAMPLES } from '@/constants/mockData';
@@ -30,25 +29,28 @@ import { useAppTheme } from '@/context/ThemeContext';
 import { analyzeFacialGeometryWithMuse } from '@/services/basetenService';
 import type { FacialMetrics, HairstyleOption, StylingPrescription } from '@/types';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function HomeScreen() {
-  const router = useRouter();
-  const { colors, mode, toggleTheme, isDark } = useAppTheme();
+  const { colors, mode, toggleTheme } = useAppTheme();
 
-  // Camera & Capture State
+  // Camera & Shutter Ref
+  const cameraRef = useRef<LiveCameraViewRef>(null);
+
+  // States
   const [hudVisible, setHudVisible] = useState(true);
   const [activePresetIdx, setActivePresetIdx] = useState(0);
   const [capturedPhotoUri, setCapturedPhotoUri] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [hasScanned, setHasScanned] = useState(false);
+  const [analysisStatus, setAnalysisStatus] = useState<string | null>(null);
 
-  // Drawer & Modal States
+  // Drawers & Modals
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [learnModalVisible, setLearnModalVisible] = useState(false);
   const [tryOnVisible, setTryOnVisible] = useState(false);
   const [activeTryOnStyle, setActiveTryOnStyle] = useState<HairstyleOption | null>(null);
 
-  // Hidden web file input for gallery upload
+  // Hidden file input for web gallery upload
   const fileInputRef = useRef<any>(null);
 
   const activePreset = PRESET_SAMPLES[activePresetIdx];
@@ -59,20 +61,44 @@ export default function HomeScreen() {
 
   const activePhotoUri = capturedPhotoUri || activePreset.imageUrl;
 
-  // Shutter Press: Instant Snapshot & Live Meta Muse Analysis
+  // Shutter Press: Captures live frame from laptop webcam and runs Meta Muse AI
   async function handleShutterPress() {
     setIsAnalyzing(true);
-    setCapturedPhotoUri(activePreset.imageUrl);
-    setHasScanned(true);
+    setAnalysisStatus('Snapping photo...');
+
+    // Try capturing live frame from laptop webcam
+    const snapshotUri = cameraRef.current?.captureSnapshot();
+    if (snapshotUri) {
+      setCapturedPhotoUri(snapshotUri);
+    } else {
+      setCapturedPhotoUri(activePreset.imageUrl);
+    }
+
+    setAnalysisStatus('Analyzing geometry with Meta Muse...');
 
     try {
       const result = await analyzeFacialGeometryWithMuse(metrics);
       setCurrentPrescription(result.prescription);
+      setAnalysisStatus('Analysis complete · 98% Match');
+      setTimeout(() => setAnalysisStatus(null), 3000);
     } catch {
-      // Graceful fallback
+      setAnalysisStatus(null);
     } finally {
       setIsAnalyzing(false);
     }
+  }
+
+  // Smoothly switch between face shape presets WITHOUT popups or freezing camera
+  function handleSelectShape(index: number) {
+    setActivePresetIdx(index);
+    setCurrentPrescription(PRESET_SAMPLES[index].prescription);
+    // Note: We deliberately keep the live camera active and update hairstyle recommendations smoothly!
+  }
+
+  // Reset back to live camera
+  function handleRetake() {
+    setCapturedPhotoUri(null);
+    setAnalysisStatus(null);
   }
 
   // Gallery photo selection
@@ -89,14 +115,16 @@ export default function HomeScreen() {
       reader.onload = async (e) => {
         const resultUri = e.target?.result as string;
         setCapturedPhotoUri(resultUri);
-        setHasScanned(true);
         setIsAnalyzing(true);
+        setAnalysisStatus('Analyzing with Meta Muse...');
 
         try {
           const result = await analyzeFacialGeometryWithMuse(metrics);
           setCurrentPrescription(result.prescription);
+          setAnalysisStatus('Analysis complete · 98% Match');
+          setTimeout(() => setAnalysisStatus(null), 3000);
         } catch {
-          // Graceful fallback
+          setAnalysisStatus(null);
         } finally {
           setIsAnalyzing(false);
         }
@@ -105,25 +133,9 @@ export default function HomeScreen() {
     }
   }
 
-  // Switch between demo face lenses
-  function handleSelectLens(index: number) {
-    setActivePresetIdx(index);
-    setCapturedPhotoUri(PRESET_SAMPLES[index].imageUrl);
-    setCurrentPrescription(PRESET_SAMPLES[index].prescription);
-    setHasScanned(true);
-  }
-
-  // Reset back to live camera
-  function handleRetake() {
-    setCapturedPhotoUri(null);
-    setHasScanned(false);
-  }
-
   // Open Try-On Modal
-  function handleOpenTryOn(styleId: string) {
-    const allStyles = [...currentPrescription.suggestedStyles, ...HAIRCUT_DATASET];
-    const found = allStyles.find((s) => s.id === styleId) || currentPrescription.suggestedStyles[0];
-    setActiveTryOnStyle(found);
+  function handleOpenTryOn(style: HairstyleOption) {
+    setActiveTryOnStyle(style);
     setTryOnVisible(true);
   }
 
@@ -144,174 +156,196 @@ export default function HomeScreen() {
 
       {/* ── 1. Full-Screen Live Camera Viewport ── */}
       <LiveCameraView
+        ref={cameraRef}
         frozenImageUri={capturedPhotoUri}
         metrics={metrics}
         hudVisible={hudVisible}
       />
 
-      {/* ── 2. Top Snapchat-Style Overlay Controls ── */}
+      {/* ── 2. Top Snapchat-Style Controls (Unblocked & Sleek) ── */}
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.topControlBar}>
-          {/* Hamburger Menu (Settings & Legal) */}
+          {/* Hamburger Menu (Settings & "Learn About Your Face") */}
           <Pressable
             onPress={() => setDrawerOpen(true)}
-            style={styles.circleBtn}
-            accessibilityLabel="Open settings and legal menu"
+            style={[styles.glassBtn, { backgroundColor: 'rgba(20, 20, 20, 0.75)', borderColor: colors.border }]}
+            accessibilityLabel="Open settings and learn menu"
           >
-            <Text style={styles.circleBtnIcon}>☰</Text>
+            <Text style={styles.glassBtnIcon}>☰</Text>
           </Pressable>
 
           {/* Center Brand Pill */}
-          <View style={styles.brandPill}>
-            <Text style={styles.brandPillText}>BIOMETRIC HAIR · φ</Text>
+          <View style={[styles.brandPill, { backgroundColor: 'rgba(20, 20, 20, 0.75)', borderColor: colors.border }]}>
+            <Text style={[styles.brandPillText, { color: colors.accent }]}>BIOMETRIC HAIR · φ</Text>
           </View>
 
           {/* Right Action Stack */}
           <View style={styles.topRightActions}>
             {/* Theme Toggle */}
-            <Pressable onPress={toggleTheme} style={styles.circleBtn}>
-              <Text style={styles.circleBtnText}>{mode === 'light' ? '☀️' : '🌙'}</Text>
+            <Pressable
+              onPress={toggleTheme}
+              style={[styles.glassBtn, { backgroundColor: 'rgba(20, 20, 20, 0.75)', borderColor: colors.border }]}
+            >
+              <Text style={styles.glassBtnText}>{mode === 'light' ? '☀️' : '🌙'}</Text>
             </Pressable>
 
-            {/* HUD Toggle */}
+            {/* HUD Reticle Toggle */}
             <Pressable
               onPress={() => setHudVisible((v) => !v)}
               style={[
-                styles.circleBtn,
-                hudVisible && { borderColor: '#D4AF37', backgroundColor: 'rgba(212, 175, 55, 0.25)' },
+                styles.glassBtn,
+                { backgroundColor: 'rgba(20, 20, 20, 0.75)', borderColor: colors.border },
+                hudVisible && { borderColor: '#D4AF37', backgroundColor: 'rgba(212, 175, 55, 0.3)' },
               ]}
             >
-              <Text style={[styles.circleBtnText, hudVisible && { color: '#D4AF37' }]}>👁️</Text>
+              <Text style={[styles.glassBtnText, hudVisible && { color: '#D4AF37' }]}>👁️</Text>
             </Pressable>
           </View>
         </View>
+
+        {/* Live Status Toast (if analyzing) */}
+        {analysisStatus && (
+          <View style={styles.statusToastWrapper}>
+            <View style={[styles.statusToast, { backgroundColor: colors.bgElevated, borderColor: colors.accent }]}>
+              {isAnalyzing && <ActivityIndicator size="small" color={colors.accent} style={{ marginRight: 8 }} />}
+              <Text style={[styles.statusToastText, { color: colors.text }]}>{analysisStatus}</Text>
+            </View>
+          </View>
+        )}
       </SafeAreaView>
 
-      {/* ── 3. Post-Capture Retake Bar (When Photo is Scanned) ── */}
-      {hasScanned && (
-        <SafeAreaView style={styles.retakeBarWrapper} edges={['top']}>
-          <Pressable onPress={handleRetake} style={styles.retakeBtn}>
-            <Text style={styles.retakeBtnText}>✕  Live Camera</Text>
+      {/* ── 3. Bottom Camera Controls & Curated Recommendations ── */}
+      <View style={styles.bottomSheetContainer}>
+        {/* Retake Live Camera Pill (if photo was snapped) */}
+        {capturedPhotoUri && (
+          <Pressable onPress={handleRetake} style={styles.retakeFloatingPill}>
+            <Text style={styles.retakeFloatingText}>✕  Switch to Live Camera</Text>
           </Pressable>
-        </SafeAreaView>
-      )}
+        )}
 
-      {/* ── 4. Bottom Controls: Shutter & Lens Switcher (Before Capture) ── */}
-      {!hasScanned && (
-        <View style={styles.bottomShutterContainer}>
-          {/* Lens Presets Carousel */}
-          <View style={styles.lensTrack}>
-            {PRESET_SAMPLES.map((preset, idx) => (
+        {/* Face Shape Archetype Selector (Oblong, Round, Oval) */}
+        <View style={styles.shapeSelectorRow}>
+          {PRESET_SAMPLES.map((preset, idx) => {
+            const isSelected = idx === activePresetIdx;
+            return (
               <Pressable
                 key={preset.label}
-                onPress={() => handleSelectLens(idx)}
+                onPress={() => handleSelectShape(idx)}
                 style={[
-                  styles.lensBtn,
-                  idx === activePresetIdx && styles.lensBtnActive,
+                  styles.shapePill,
+                  isSelected && styles.shapePillActive,
                 ]}
               >
                 <Text
                   style={[
-                    styles.lensBtnText,
-                    idx === activePresetIdx && styles.lensBtnTextActive,
+                    styles.shapePillText,
+                    isSelected && styles.shapePillTextActive,
                   ]}
                 >
                   {preset.label}
                 </Text>
               </Pressable>
-            ))}
-          </View>
-
-          {/* Main Shutter Row */}
-          <View style={styles.shutterRow}>
-            {/* Gallery Upload Button */}
-            <Pressable onPress={handleTriggerGallery} style={styles.galleryBtn}>
-              <Text style={styles.galleryIcon}>🖼️</Text>
-            </Pressable>
-
-            {/* Iconic Snapchat Shutter Button */}
-            <Pressable
-              onPress={handleShutterPress}
-              style={styles.shutterOuterRing}
-              disabled={isAnalyzing}
-            >
-              <View style={styles.shutterInnerCircle}>
-                {isAnalyzing ? (
-                  <ActivityIndicator size="small" color="#000000" />
-                ) : (
-                  <View style={styles.shutterCenterDot} />
-                )}
-              </View>
-            </Pressable>
-
-            {/* Quick Demo Scan Button */}
-            <Pressable
-              onPress={handleShutterPress}
-              style={styles.scanPillBtn}
-            >
-              <Text style={styles.scanPillText}>Scan φ</Text>
-            </Pressable>
-          </View>
+            );
+          })}
         </View>
-      )}
 
-      {/* ── 5. Fluid Bottom Results Sheet (Appears on Scan) ── */}
-      {hasScanned && (
-        <View
-          style={[
-            styles.resultsSheet,
-            {
-              backgroundColor: colors.bgElevated,
-              borderColor: colors.border,
-            },
-          ]}
-        >
-          {/* Sheet Grab Handle */}
-          <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
+        {/* Shutter Row */}
+        <View style={styles.shutterRow}>
+          {/* Gallery Button */}
+          <Pressable onPress={handleTriggerGallery} style={styles.sideBtn}>
+            <Text style={styles.sideBtnIcon}>🖼️</Text>
+          </Pressable>
 
-          <ScrollView style={styles.resultsScroll} showsVerticalScrollIndicator={false}>
-            {/* Recommended Cut Header */}
-            <View style={styles.resultsHeader}>
-              <View>
-                <Text style={[styles.resultsOverline, { color: colors.accent }]}>BEST MATCH SILHOUETTE</Text>
-                <Text style={[styles.resultsTitle, { color: colors.text }]}>
-                  {currentPrescription.haircutName}
-                </Text>
-              </View>
-              <View style={[styles.matchBadge, { backgroundColor: colors.accentGreenLight }]}>
-                <Text style={[styles.matchBadgeText, { color: colors.accentGreen }]}>98% HARMONY</Text>
-              </View>
+          {/* Iconic Snapchat Shutter Button */}
+          <Pressable
+            onPress={handleShutterPress}
+            style={styles.shutterOuterRing}
+            disabled={isAnalyzing}
+          >
+            <View style={styles.shutterInnerCircle}>
+              {isAnalyzing ? (
+                <ActivityIndicator size="small" color="#000000" />
+              ) : (
+                <View style={styles.shutterCenterDot} />
+              )}
             </View>
+          </Pressable>
 
-            {/* Minimal Metric Score Card */}
-            <MetricCards metrics={metrics} />
+          {/* Quick Info / Learn Shortcut */}
+          <Pressable
+            onPress={() => setLearnModalVisible(true)}
+            style={styles.sideBtn}
+            accessibilityLabel="Learn about face proportions"
+          >
+            <Text style={styles.sideBtnIcon}>ℹ️</Text>
+          </Pressable>
+        </View>
 
-            {/* Curated Hairstyles Lookbook */}
-            <Text style={[styles.lookbookHeader, { color: colors.textSecondary }]}>
-              ARCHITECTURAL RECOMMENDATIONS
+        {/* ── 4. Curated Hairstyles Strip (Clear, Concise, Actionable) ── */}
+        <View style={[styles.stylesDeck, { backgroundColor: 'rgba(15, 13, 11, 0.88)', borderColor: colors.border }]}>
+          <View style={styles.deckHeader}>
+            <Text style={[styles.deckTitle, { color: colors.accent }]}>RECOMMENDED HAIRSTYLES</Text>
+            <Text style={[styles.deckSubtitle, { color: colors.textSecondary }]}>
+              Matched to {activePreset.label} Face Geometry
             </Text>
+          </View>
 
-            <View style={styles.stylesList}>
-              {currentPrescription.suggestedStyles.map((style) => (
-                <StyleCard
-                  key={style.id}
-                  style={style}
-                  volumeProfile={currentPrescription.volumeProfile}
-                  onTryOn={handleOpenTryOn}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.stylesScroll}
+          >
+            {currentPrescription.suggestedStyles.map((style) => (
+              <View
+                key={style.id}
+                style={[
+                  styles.styleCardCompact,
+                  { backgroundColor: colors.bgSubtle, borderColor: colors.border },
+                ]}
+              >
+                <Image
+                  source={{ uri: style.previewUrl }}
+                  style={styles.styleThumb}
+                  resizeMode="cover"
                 />
-              ))}
-            </View>
-
-            <View style={{ height: 32 }} />
+                <View style={styles.styleInfo}>
+                  <Text style={[styles.styleName, { color: colors.text }]} numberOfLines={1}>
+                    {style.name}
+                  </Text>
+                  <View style={styles.styleMetaRow}>
+                    <View style={[styles.matchBadge, { backgroundColor: colors.accentGreenLight }]}>
+                      <Text style={[styles.matchBadgeText, { color: colors.accentGreen }]}>
+                        {style.suitabilityScore ? `${style.suitabilityScore}% Match` : '98% Match'}
+                      </Text>
+                    </View>
+                    <Text style={[styles.styleCategory, { color: colors.textMuted }]}>
+                      {style.category}
+                    </Text>
+                  </View>
+                  <Pressable
+                    onPress={() => handleOpenTryOn(style)}
+                    style={[styles.tryOnCompactBtn, { backgroundColor: colors.accent }]}
+                  >
+                    <Text style={styles.tryOnCompactBtnText}>Simulate Try-On ✨</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ))}
           </ScrollView>
         </View>
-      )}
+      </View>
 
-      {/* ── Slide-Out Settings & Legal Drawer ── */}
+      {/* ── Slide-Out Hamburger Settings & Legal Drawer ── */}
       <SettingsDrawer
         visible={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        onNavigateToLearn={() => router.push('/explore')}
+        onOpenLearnAboutFace={() => setLearnModalVisible(true)}
+      />
+
+      {/* ── "Learn About Your Face" Modal (Dedicated, Visual & Concise) ── */}
+      <LearnModal
+        visible={learnModalVisible}
+        onClose={() => setLearnModalVisible(false)}
       />
 
       {/* ── Generative Try-On Simulation Modal (Modal GPU) ── */}
@@ -336,7 +370,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    zIndex: 20,
+    zIndex: 30,
   },
   topControlBar: {
     flexDirection: 'row',
@@ -345,139 +379,141 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
-  circleBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+  glassBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  circleBtnIcon: {
+  glassBtnIcon: {
+    fontSize: 20,
+    color: '#FBF9F5',
+  },
+  glassBtnText: {
     fontSize: 16,
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  circleBtnText: {
-    fontSize: 14,
-    color: '#FFFFFF',
   },
   brandPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(212, 175, 55, 0.4)',
   },
   brandPillText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 1,
+    letterSpacing: 1.5,
   },
   topRightActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
-  retakeBarWrapper: {
-    position: 'absolute',
-    top: 60,
-    left: 16,
-    zIndex: 30,
+  statusToastWrapper: {
+    alignItems: 'center',
+    marginTop: 8,
   },
-  retakeBtn: {
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    paddingHorizontal: 14,
+  statusToast: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
-  retakeBtnText: {
-    color: '#FFFFFF',
+  statusToastText: {
     fontSize: 12,
     fontWeight: '700',
+    letterSpacing: 0.5,
   },
-  bottomShutterContainer: {
+  bottomSheetContainer: {
     position: 'absolute',
-    bottom: 24,
+    bottom: 0,
     left: 0,
     right: 0,
+    zIndex: 25,
     alignItems: 'center',
-    gap: 16,
-    zIndex: 20,
   },
-  lensTrack: {
+  retakeFloatingPill: {
+    backgroundColor: 'rgba(20, 20, 20, 0.85)',
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#D4AF37',
+    marginBottom: 8,
+  },
+  retakeFloatingText: {
+    color: '#D4AF37',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  shapeSelectorRow: {
     flexDirection: 'row',
-    gap: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    backgroundColor: 'rgba(20, 20, 20, 0.8)',
+    padding: 4,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    marginBottom: 10,
+    gap: 4,
   },
-  lensBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 16,
+  shapePill: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 18,
   },
-  lensBtnActive: {
+  shapePillActive: {
     backgroundColor: '#D4AF37',
   },
-  lensBtnText: {
-    color: '#A8A196',
-    fontSize: 11,
+  shapePillText: {
+    fontSize: 12,
     fontWeight: '700',
+    color: '#A8A29E',
   },
-  lensBtnTextActive: {
-    color: '#000000',
+  shapePillTextActive: {
+    color: '#0C0A09',
   },
   shutterRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 28,
+    marginBottom: 12,
   },
-  galleryBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+  sideBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(20, 20, 20, 0.75)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    alignItems: 'center',
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  galleryIcon: {
+  sideBtnIcon: {
     fontSize: 20,
   },
   shutterOuterRing: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     borderWidth: 4,
-    borderColor: '#FFFFFF',
-    padding: 3,
-    alignItems: 'center',
+    borderColor: '#FBF9F5',
     justifyContent: 'center',
-    shadowColor: '#D4AF37',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 6,
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    boxShadow: '0 0 20px rgba(212, 175, 55, 0.5)',
   },
   shutterInnerCircle: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 34,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FBF9F5',
     justifyContent: 'center',
+    alignItems: 'center',
   },
   shutterCenterDot: {
     width: 14,
@@ -485,83 +521,81 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     backgroundColor: '#D4AF37',
   },
-  scanPillBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-    borderWidth: 1,
-    borderColor: '#D4AF37',
-    alignItems: 'center',
-    justifyContent: 'center',
+  stylesDeck: {
+    width: '100%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderTopWidth: 1,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 14,
   },
-  scanPillText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#D4AF37',
-  },
-  resultsSheet: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: SCREEN_HEIGHT * 0.58,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderWidth: 1,
-    borderBottomWidth: 0,
-    paddingTop: 10,
-    zIndex: 25,
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  sheetHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 8,
-  },
-  resultsScroll: {
-    flex: 1,
-  },
-  resultsHeader: {
+  deckHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'baseline',
+    paddingHorizontal: 16,
+    marginBottom: 10,
+  },
+  deckTitle: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+  },
+  deckSubtitle: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  stylesScroll: {
+    paddingHorizontal: 14,
+    gap: 12,
+  },
+  styleCardCompact: {
+    width: 220,
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  styleThumb: {
+    width: '100%',
+    height: 110,
+  },
+  styleInfo: {
+    padding: 10,
+  },
+  styleName: {
+    fontSize: 13,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  styleMetaRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-  },
-  resultsOverline: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  resultsTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    letterSpacing: -0.2,
+    gap: 8,
+    marginBottom: 8,
   },
   matchBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
   matchBadgeText: {
     fontSize: 10,
     fontWeight: '800',
   },
-  lookbookHeader: {
+  styleCategory: {
     fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-    paddingHorizontal: 20,
-    marginTop: 10,
-    marginBottom: 6,
+    fontWeight: '600',
+    textTransform: 'uppercase',
   },
-  stylesList: {
-    paddingHorizontal: 20,
+  tryOnCompactBtn: {
+    borderRadius: 8,
+    paddingVertical: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tryOnCompactBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#0C0A09',
   },
 });

@@ -2,12 +2,14 @@
 // Short, precise, and visually magnetic education on Golden Ratio (φ ≈ 1.618),
 // Neoclassical Farkas thirds, and volumetric haircut compensation.
 
+import { useRouter } from 'expo-router';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppTheme } from '@/context/ThemeContext';
 
 export default function LearnScreen() {
+  const router = useRouter();
   const { colors, isDark } = useAppTheme();
 
   return (
@@ -15,7 +17,13 @@ export default function LearnScreen() {
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         {/* Header */}
         <View style={[styles.header, { backgroundColor: colors.bgElevated, borderBottomColor: colors.border }]}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>HAIR ARCHITECTURE GUIDE</Text>
+          <Pressable
+            onPress={() => router.replace('/')}
+            style={[styles.backBtn, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}
+          >
+            <Text style={[styles.backBtnText, { color: colors.accent }]}>← Camera</Text>
+          </Pressable>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>HAIR ARCHITECTURE</Text>
           <View style={[styles.badge, { backgroundColor: colors.accentLight }]}>
             <Text style={[styles.badgeText, { color: colors.accent }]}>THE SCIENCE OF φ</Text>
           </View>
@@ -168,6 +176,16 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     letterSpacing: 1.2,
+  },
+  backBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  backBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   badge: {
     paddingHorizontal: 8,
