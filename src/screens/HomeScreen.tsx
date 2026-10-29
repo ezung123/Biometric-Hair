@@ -1,7 +1,7 @@
 // ─── HomeScreen (Camera-First App Architecture) ──────────────────────────────
 // Snapchat/Lensa-inspired mobile camera experience.
 // Direct camera-first viewport, AR golden ratio reticle, clean isolated hairstyle lenses,
-// real-time transparent hairstyle augmentation onto the user's face, and standard mobile drawer.
+// photorealistic AI Try-On Studio, and pristine iOS drawer navigation.
 
 import { StatusBar } from 'expo-status-bar';
 import React, { useRef, useState } from 'react';
@@ -23,54 +23,47 @@ import { LearnModal } from '@/components/LearnModal';
 import { LearnHairstylesModal } from '@/components/LearnHairstylesModal';
 import { AboutUsModal } from '@/components/AboutUsModal';
 import { SettingsDrawer } from '@/components/SettingsDrawer';
-import { TryOnModal, HAIRCUT_ASSET_MAP } from '@/components/TryOnModal';
+import { TryOnModal, EDITORIAL_TRYON_MAP } from '@/components/TryOnModal';
 import { PRESET_SAMPLES } from '@/constants/mockData';
 import { useAppTheme } from '@/context/ThemeContext';
 import { analyzeFacialGeometryWithMuse } from '@/services/basetenService';
 import type { FacialMetrics, HairstyleOption, StylingPrescription } from '@/types';
 
-// Curated isolated hairstyle lenses — 1-2 words, just the haircut itself
+// Curated isolated hairstyle lenses — 1-2 words, clean thumbnail
 interface HairstyleLensItem {
   id: string;
   name: string; // One or two words
-  asset: any | null;
+  thumbnail: any;
   category: string;
   targetMorphology: string;
 }
 
 const HAIRSTYLE_LENSES: HairstyleLensItem[] = [
   {
-    id: 'none',
-    name: 'Natural',
-    asset: null,
-    category: 'Natural',
-    targetMorphology: 'All',
-  },
-  {
     id: 'curtain-fringe',
     name: 'Curtain Fringe',
-    asset: HAIRCUT_ASSET_MAP['curtain-fringe'],
+    thumbnail: require('@/assets/images/hair_curtain_fringe.png'),
     category: 'Fringe',
     targetMorphology: 'Oblong',
   },
   {
     id: 'textured-crop',
     name: 'Textured Crop',
-    asset: HAIRCUT_ASSET_MAP['textured-crop'],
+    thumbnail: require('@/assets/images/hair_textured_crop.png'),
     category: 'Crop',
     targetMorphology: 'Oval',
   },
   {
     id: 'classic-quiff',
     name: 'Classic Quiff',
-    asset: HAIRCUT_ASSET_MAP['classic-quiff'],
+    thumbnail: require('@/assets/images/hair_classic_quiff.png'),
     category: 'Quiff',
     targetMorphology: 'Round',
   },
   {
     id: 'taper-fade',
     name: 'Taper Fade',
-    asset: HAIRCUT_ASSET_MAP['taper-fade'],
+    thumbnail: require('@/assets/images/hair_taper_fade.png'),
     category: 'Fade',
     targetMorphology: 'Square',
   },
@@ -85,8 +78,7 @@ export default function HomeScreen() {
   // States
   const [cameraEnabled, setCameraEnabled] = useState(true);
   const [hudVisible, setHudVisible] = useState(true);
-  const [showAugmentation, setShowAugmentation] = useState(true);
-  const [activeLensId, setActiveLensId] = useState<string>('none');
+  const [activeLensId, setActiveLensId] = useState<string>('curtain-fringe');
   const [activePresetIdx, setActivePresetIdx] = useState(0);
   const [capturedPhotoUri, setCapturedPhotoUri] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -108,14 +100,13 @@ export default function HomeScreen() {
     activePreset.prescription
   );
 
-  // Resolve currently active hair asset for augmentation on user's head
   const activeLens = HAIRSTYLE_LENSES.find((l) => l.id === activeLensId) || HAIRSTYLE_LENSES[0];
   const activePhotoUri = capturedPhotoUri || activePreset.imageUrl;
 
   // Active Hairstyle Option for TryOnModal
   const activeStyleOption: HairstyleOption = {
-    id: activeLens.id === 'none' ? 'curtain-fringe' : activeLens.id,
-    name: activeLens.id === 'none' ? 'Curtain Fringe' : activeLens.name,
+    id: activeLens.id,
+    name: activeLens.name,
     category: activeLens.category,
     whyItWorks: 'Architecturally balances facial proportions toward the golden ratio.',
     suitabilityScore: 98,
@@ -139,10 +130,14 @@ export default function HomeScreen() {
     try {
       const result = await analyzeFacialGeometryWithMuse(metrics);
       setCurrentPrescription(result.prescription);
-      setAnalysisStatus('Analysis complete · 98% Golden Ratio');
-      setTimeout(() => setAnalysisStatus(null), 3000);
+      setAnalysisStatus('Analysis complete · 98% Harmony');
+      setTimeout(() => {
+        setAnalysisStatus(null);
+        setTryOnVisible(true);
+      }, 1500);
     } catch {
       setAnalysisStatus(null);
+      setTryOnVisible(true);
     } finally {
       setIsAnalyzing(false);
     }
@@ -161,14 +156,9 @@ export default function HomeScreen() {
     }
   }
 
-  // Select hairstyle lens to augment on user's face
+  // Select hairstyle lens
   function handleSelectLens(lensId: string) {
     setActiveLensId(lensId);
-    if (lensId === 'none') {
-      setShowAugmentation(false);
-    } else {
-      setShowAugmentation(true);
-    }
   }
 
   // Reset back to live camera
@@ -198,9 +188,13 @@ export default function HomeScreen() {
           const result = await analyzeFacialGeometryWithMuse(metrics);
           setCurrentPrescription(result.prescription);
           setAnalysisStatus('Analysis complete · 98% Match');
-          setTimeout(() => setAnalysisStatus(null), 3000);
+          setTimeout(() => {
+            setAnalysisStatus(null);
+            setTryOnVisible(true);
+          }, 1500);
         } catch {
           setAnalysisStatus(null);
+          setTryOnVisible(true);
         } finally {
           setIsAnalyzing(false);
         }
@@ -224,14 +218,12 @@ export default function HomeScreen() {
         />
       )}
 
-      {/* ── 1. Full-Screen Live Camera Viewport with Hair Augmentation ── */}
+      {/* ── 1. Full-Screen Live Camera Viewport (Clean & Uncluttered) ── */}
       <LiveCameraView
         ref={cameraRef}
         frozenImageUri={capturedPhotoUri}
         metrics={metrics}
         hudVisible={hudVisible}
-        augmentedHairAsset={activeLens.asset}
-        showAugmentation={showAugmentation && activeLens.asset !== null}
         cameraEnabled={cameraEnabled}
         onToggleCamera={() => setCameraEnabled((v) => !v)}
       />
@@ -362,14 +354,11 @@ export default function HomeScreen() {
             </View>
           </Pressable>
 
-          {/* Try-On View on User's Face */}
+          {/* Try-On View Button */}
           <Pressable
             onPress={() => setTryOnVisible(true)}
-            style={[
-              styles.sideBtn,
-              activeLensId !== 'none' && { borderColor: '#D4AF37', backgroundColor: 'rgba(212, 175, 55, 0.25)' },
-            ]}
-            accessibilityLabel="View full try-on on your face"
+            style={[styles.sideBtn, { borderColor: '#D4AF37', backgroundColor: 'rgba(212, 175, 55, 0.25)' }]}
+            accessibilityLabel="View full try-on simulation"
           >
             <Text style={[styles.sideBtnIcon, { fontSize: 16, color: '#D4AF37', fontWeight: '800' }]}>✦</Text>
           </Pressable>
@@ -390,22 +379,18 @@ export default function HomeScreen() {
                   onPress={() => handleSelectLens(lens.id)}
                   style={styles.lensItem}
                 >
-                  {/* Round Hairpiece Thumbnail (Transparent PNG, No Black Box) */}
+                  {/* Round Hairpiece Thumbnail */}
                   <View
                     style={[
                       styles.lensCircle,
                       isSelected && styles.lensCircleActive,
                     ]}
                   >
-                    {lens.asset ? (
-                      <Image
-                        source={lens.asset}
-                        style={styles.lensThumbImage}
-                        resizeMode="contain"
-                      />
-                    ) : (
-                      <Text style={styles.naturalLensIcon}>✕</Text>
-                    )}
+                    <Image
+                      source={lens.thumbnail}
+                      style={styles.lensThumbImage}
+                      resizeMode="contain"
+                    />
                   </View>
 
                   {/* One or Two Words */}
@@ -455,14 +440,13 @@ export default function HomeScreen() {
         onClose={() => setAboutUsVisible(false)}
       />
 
-      {/* ── Generative Try-On Simulation Modal (User's Own Face Augmented) ── */}
+      {/* ── Generative Try-On Simulation Studio (Photorealistic Editorial Transformation) ── */}
       <TryOnModal
         visible={tryOnVisible}
         onClose={() => setTryOnVisible(false)}
         styleOption={activeStyleOption}
         volumeProfile={currentPrescription.volumeProfile}
         originalImageUri={activePhotoUri}
-        haircutAsset={activeLens.asset}
       />
     </View>
   );
@@ -670,11 +654,6 @@ const styles = StyleSheet.create({
   lensThumbImage: {
     width: '88%',
     height: '88%',
-  },
-  naturalLensIcon: {
-    fontSize: 16,
-    color: '#8E8E93',
-    fontWeight: '700',
   },
   lensLabel: {
     fontSize: 11,

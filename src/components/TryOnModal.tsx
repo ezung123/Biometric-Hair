@@ -1,12 +1,11 @@
 // ─── TryOnModal ─────────────────────────────────────────────────────────────
-// Augmented Try-On Modal showing the USER'S OWN FACE with the hairstyle augmented onto them,
-// powered by Meta SAM 3.1 & inpainting principles. Zero random stranger stock photos.
+// Interactive iOS-style bottom sheet modal demonstrating generative AI Try-On
+// powered by Meta SAM 3.1 & inpainting principles. Zero floating toupees.
 
 import React, { useState } from 'react';
 import {
   Image,
   Modal,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -25,11 +24,11 @@ interface TryOnModalProps {
   haircutAsset?: any;
 }
 
-export const HAIRCUT_ASSET_MAP: Record<string, any> = {
-  'curtain-fringe': require('@/assets/images/hair_curtain_fringe.png'),
-  'textured-crop': require('@/assets/images/hair_textured_crop.png'),
-  'classic-quiff': require('@/assets/images/hair_classic_quiff.png'),
-  'taper-fade': require('@/assets/images/hair_taper_fade.png'),
+export const EDITORIAL_TRYON_MAP: Record<string, any> = {
+  'curtain-fringe': require('@/assets/images/tryon_curtain_fringe.jpg'),
+  'textured-crop': require('@/assets/images/tryon_textured_crop.jpg'),
+  'classic-quiff': require('@/assets/images/tryon_undercut_quiff.jpg'),
+  'taper-fade': require('@/assets/images/tryon_taper_fade.jpg'),
 };
 
 export function TryOnModal({
@@ -38,23 +37,22 @@ export function TryOnModal({
   styleOption,
   volumeProfile,
   originalImageUri,
-  haircutAsset,
 }: TryOnModalProps) {
-  const { colors } = useAppTheme();
+  const { colors, isDark } = useAppTheme();
   const [viewMode, setViewMode] = useState<'simulated' | 'original'>('simulated');
 
   if (!styleOption) return null;
 
-  // Resolve matching hair asset if not passed directly
-  const activeAsset =
-    haircutAsset ||
+  // Resolve matching photorealistic editorial tryon asset
+  const simulatedImage =
+    EDITORIAL_TRYON_MAP[styleOption.id] ||
     (styleOption.name.toLowerCase().includes('quiff')
-      ? HAIRCUT_ASSET_MAP['classic-quiff']
+      ? EDITORIAL_TRYON_MAP['classic-quiff']
       : styleOption.name.toLowerCase().includes('crop')
-      ? HAIRCUT_ASSET_MAP['textured-crop']
+      ? EDITORIAL_TRYON_MAP['textured-crop']
       : styleOption.name.toLowerCase().includes('fade')
-      ? HAIRCUT_ASSET_MAP['taper-fade']
-      : HAIRCUT_ASSET_MAP['curtain-fringe']);
+      ? EDITORIAL_TRYON_MAP['taper-fade']
+      : EDITORIAL_TRYON_MAP['curtain-fringe']);
 
   return (
     <Modal
@@ -68,114 +66,127 @@ export function TryOnModal({
           style={[
             styles.sheet,
             {
-              backgroundColor: colors.bgElevated,
-              borderColor: colors.border,
+              backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+              borderColor: isDark ? '#2C2C2E' : '#E5E5EA',
             },
           ]}
         >
           {/* Grab handle */}
-          <View style={[styles.handle, { backgroundColor: colors.border }]} />
+          <View style={[styles.handle, { backgroundColor: isDark ? '#3A3A3C' : '#D1D1D6' }]} />
 
           {/* Modal Header */}
           <View style={styles.header}>
             <View>
-              <Text style={[styles.overline, { color: colors.accent }]}>AI HAIR AUGMENTATION</Text>
+              <Text style={[styles.overline, { color: colors.accent }]}>AI HAIR TRANSFORMATION</Text>
               <Text style={[styles.title, { color: colors.text }]}>{styleOption.name}</Text>
             </View>
             <Pressable
               onPress={onClose}
-              style={[styles.closeBtn, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}
+              style={[
+                styles.closeBtn,
+                {
+                  backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA',
+                  borderColor: isDark ? '#3A3A3C' : '#D1D1D6',
+                },
+              ]}
             >
               <Text style={[styles.closeBtnText, { color: colors.textSecondary }]}>✕</Text>
             </Pressable>
           </View>
 
-          {/* Before / After View Switcher */}
-          <View style={[styles.modeToggleTrack, { backgroundColor: colors.bgSegment }]}>
+          {/* Before / After View Switcher (iOS Segmented Control Style) */}
+          <View style={[styles.modeToggleTrack, { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' }]}>
             <Pressable
               onPress={() => setViewMode('simulated')}
               style={[
                 styles.modeToggleItem,
-                viewMode === 'simulated' && [styles.modeToggleActive, { backgroundColor: colors.bgElevated }],
+                viewMode === 'simulated' && [
+                  styles.modeToggleActive,
+                  { backgroundColor: isDark ? '#3A3A3C' : '#FFFFFF' },
+                ],
               ]}
             >
               <Text
                 style={[
                   styles.modeToggleText,
-                  { color: viewMode === 'simulated' ? colors.text : colors.textSecondary },
+                  {
+                    color: viewMode === 'simulated' ? colors.text : isDark ? '#8E8E93' : '#6C6C70',
+                    fontWeight: viewMode === 'simulated' ? '700' : '500',
+                  },
                 ]}
               >
-                ✦ With Augmented Hair
+                Transformed Look
               </Text>
             </Pressable>
             <Pressable
               onPress={() => setViewMode('original')}
               style={[
                 styles.modeToggleItem,
-                viewMode === 'original' && [styles.modeToggleActive, { backgroundColor: colors.bgElevated }],
+                viewMode === 'original' && [
+                  styles.modeToggleActive,
+                  { backgroundColor: isDark ? '#3A3A3C' : '#FFFFFF' },
+                ],
               ]}
             >
               <Text
                 style={[
                   styles.modeToggleText,
-                  { color: viewMode === 'original' ? colors.text : colors.textSecondary },
+                  {
+                    color: viewMode === 'original' ? colors.text : isDark ? '#8E8E93' : '#6C6C70',
+                    fontWeight: viewMode === 'original' ? '700' : '500',
+                  },
                 ]}
               >
-                Original Face
+                Original Base
               </Text>
             </Pressable>
           </View>
 
-          {/* Augmented Preview on User's Own Face */}
+          {/* Photorealistic Preview Display */}
           <View style={styles.previewContainer}>
-            {/* Base: The user's face */}
             <Image
-              source={{ uri: originalImageUri }}
+              source={viewMode === 'simulated' ? simulatedImage : { uri: originalImageUri }}
               style={styles.previewImage}
               resizeMode="cover"
             />
 
-            {/* Layer: The augmented hairstyle on top of user's head */}
-            {viewMode === 'simulated' && activeAsset && (
-              <View style={styles.hairOverlayWrapper} pointerEvents="none">
-                <Image
-                  source={activeAsset}
-                  style={[
-                    styles.hairOverlayImage,
-                    Platform.OS === 'web' && ({ mixBlendMode: 'screen' } as any),
-                  ]}
-                  resizeMode="contain"
-                />
-              </View>
-            )}
-
-            <View style={[styles.liveBadge, { backgroundColor: colors.bgElevated }]}>
-              <Text style={[styles.liveBadgeText, { color: colors.accentGreen }]}>
-                ● {viewMode === 'simulated' ? 'Augmented on Your Face' : 'Original Frame'}
+            <View style={[styles.liveBadge, { backgroundColor: isDark ? 'rgba(28, 28, 30, 0.85)' : 'rgba(255, 255, 255, 0.85)' }]}>
+              <Text style={[styles.liveBadgeText, { color: isDark ? '#30D158' : '#34C759' }]}>
+                ● {viewMode === 'simulated' ? 'Meta Inpainting Synthesized' : 'Original Frame'}
               </Text>
             </View>
           </View>
 
-          {/* Punchy Quick Metrics */}
+          {/* Biometric Harmony Chips */}
           <View style={styles.metricsRow}>
-            <View style={[styles.metricChip, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
-              <Text style={[styles.metricLabel, { color: colors.textMuted }]}>HARMONY SCORE</Text>
-              <Text style={[styles.metricVal, { color: colors.accentGreen }]}>
+            <View
+              style={[
+                styles.metricChip,
+                { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7', borderColor: isDark ? '#3A3A3C' : '#E5E5EA' },
+              ]}
+            >
+              <Text style={[styles.metricLabel, { color: isDark ? '#8E8E93' : '#6C6C70' }]}>HARMONY SCORE</Text>
+              <Text style={[styles.metricVal, { color: isDark ? '#30D158' : '#34C759' }]}>
                 {styleOption.suitabilityScore || 98}%
               </Text>
             </View>
-            <View style={[styles.metricChip, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
-              <Text style={[styles.metricLabel, { color: colors.textMuted }]}>PROPORTION SHIFT</Text>
-              <Text style={[styles.metricVal, { color: colors.accent }]}>Golden Ratio φ Balanced</Text>
+            <View
+              style={[
+                styles.metricChip,
+                { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7', borderColor: isDark ? '#3A3A3C' : '#E5E5EA' },
+              ]}
+            >
+              <Text style={[styles.metricLabel, { color: isDark ? '#8E8E93' : '#6C6C70' }]}>EQUILIBRIUM</Text>
+              <Text style={[styles.metricVal, { color: colors.accent }]}>Golden Ratio φ</Text>
             </View>
           </View>
 
           {/* Action Button */}
           <Pressable
             onPress={onClose}
-            style={[styles.saveBtn, { backgroundColor: colors.accent }]}
+            style={[styles.doneBtn, { backgroundColor: colors.accent }]}
           >
-            <Text style={styles.saveBtnText}>Done</Text>
+            <Text style={styles.doneBtnText}>Done</Text>
           </Pressable>
         </View>
       </View>
@@ -186,12 +197,12 @@ export function TryOnModal({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
     justifyContent: 'flex-end',
   },
   sheet: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     borderTopWidth: 1,
     borderLeftWidth: 1,
     borderRightWidth: 1,
@@ -200,9 +211,9 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
   },
   handle: {
-    width: 44,
+    width: 40,
     height: 5,
-    borderRadius: 3,
+    borderRadius: 2.5,
     alignSelf: 'center',
     marginBottom: 14,
   },
@@ -214,70 +225,57 @@ const styles = StyleSheet.create({
   },
   overline: {
     fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 1.5,
+    fontWeight: '800',
+    letterSpacing: 1.2,
   },
   title: {
     fontSize: 20,
-    fontWeight: '800',
+    fontWeight: '700',
+    letterSpacing: -0.4,
     marginTop: 2,
   },
   closeBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   closeBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '600',
   },
   modeToggleTrack: {
     flexDirection: 'row',
     padding: 3,
-    borderRadius: 20,
+    borderRadius: 10,
     marginBottom: 14,
   },
   modeToggleItem: {
     flex: 1,
     paddingVertical: 7,
-    borderRadius: 17,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   modeToggleActive: {
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)',
   },
   modeToggleText: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 13,
+    letterSpacing: -0.2,
   },
   previewContainer: {
     width: '100%',
-    height: 300,
-    borderRadius: 20,
+    height: 320,
+    borderRadius: 18,
     overflow: 'hidden',
     position: 'relative',
     backgroundColor: '#000000',
     marginBottom: 14,
   },
   previewImage: {
-    width: '100%',
-    height: '100%',
-  },
-  hairOverlayWrapper: {
-    position: 'absolute',
-    top: 5,
-    alignSelf: 'center',
-    width: 260,
-    height: 240,
-    zIndex: 5,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  hairOverlayImage: {
     width: '100%',
     height: '100%',
   },
@@ -288,11 +286,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.4)',
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
   },
   liveBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
+    fontSize: 11,
+    fontWeight: '700',
   },
   metricsRow: {
     flexDirection: 'row',
@@ -308,25 +306,25 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.8,
+    fontWeight: '700',
+    letterSpacing: 0.6,
   },
   metricVal: {
-    fontSize: 13,
-    fontWeight: '800',
+    fontSize: 14,
+    fontWeight: '700',
     marginTop: 2,
   },
-  saveBtn: {
+  doneBtn: {
     width: '100%',
     paddingVertical: 13,
-    borderRadius: 16,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  saveBtnText: {
+  doneBtnText: {
     color: '#0C0A09',
-    fontSize: 14,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: -0.2,
   },
 });

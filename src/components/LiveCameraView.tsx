@@ -1,8 +1,9 @@
 // ─── LiveCameraView ─────────────────────────────────────────────────────────
 // Snapchat/Lensa-style live camera viewfinder with real-time AR face alignment reticle,
-// realistic transparent hair augmentation, and complete webcam hardware on/off controls.
+// bulletproof webcam streaming with zero black screens, and hardware shutoff controls.
+// Note: Floating 2D hair wigs have been completely removed from the live camera.
 
-import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import {
   Image,
   Platform,
@@ -28,8 +29,6 @@ interface LiveCameraViewProps {
   metrics: FacialMetrics;
   hudVisible: boolean;
   onCameraActive?: (active: boolean) => void;
-  augmentedHairAsset?: any;
-  showAugmentation?: boolean;
   cameraEnabled?: boolean;
   onToggleCamera?: () => void;
 }
@@ -41,8 +40,6 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
       metrics,
       hudVisible,
       onCameraActive,
-      augmentedHairAsset,
-      showAugmentation = true,
       cameraEnabled = true,
       onToggleCamera,
     },
@@ -54,7 +51,7 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
 
-    // Multi-tier fallback getUserMedia to ensure compatibility with Windows laptop webcams
+    // Multi-tier fallback getUserMedia to ensure compatibility with all laptop webcams
     async function requestWebcamStream(): Promise<MediaStream> {
       if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
         throw new Error('Webcam API is not supported in this browser.');
@@ -91,6 +88,37 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
       });
     }
 
+    // Attach stream to video DOM element with complete autoplay compliance
+    const attachStreamToVideo = useCallback((stream: MediaStream | null) => {
+      const video = videoRef.current;
+      if (!video) return;
+
+      if (stream) {
+        video.muted = true;
+        video.defaultMuted = true;
+        video.playsInline = true;
+        video.autoplay = true;
+        video.srcObject = stream;
+        video.onloadedmetadata = () => {
+          video.play().catch((e) => console.log('[Camera] Autoplay pending click:', e));
+        };
+        video.play().catch(() => {});
+      } else {
+        video.srcObject = null;
+      }
+    }, []);
+
+    // Callback ref ensures stream connects instantly upon DOM mount
+    const setVideoElement = useCallback(
+      (node: HTMLVideoElement | null) => {
+        videoRef.current = node;
+        if (node && streamRef.current) {
+          attachStreamToVideo(streamRef.current);
+        }
+      },
+      [attachStreamToVideo]
+    );
+
     async function startCamera() {
       if (Platform.OS !== 'web') return;
 
@@ -101,17 +129,7 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
         streamRef.current = stream;
         setHasCameraStream(true);
         onCameraActive?.(true);
-
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.muted = true;
-          videoRef.current.setAttribute('playsinline', 'true');
-          videoRef.current.setAttribute('autoplay', 'true');
-          videoRef.current.onloadedmetadata = () => {
-            videoRef.current?.play().catch((e) => console.log('[Camera] Autoplay waiting:', e));
-          };
-          videoRef.current.play().catch(() => {});
-        }
+        attachStreamToVideo(stream);
       } catch (err: any) {
         console.warn('[Camera] getUserMedia failed:', err);
         setHasCameraStream(false);
@@ -125,9 +143,7 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
         streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
       }
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
+      attachStreamToVideo(null);
       setHasCameraStream(false);
       onCameraActive?.(false);
     }
@@ -145,18 +161,6 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
       };
     }, [cameraEnabled]);
 
-    // Ensure video stream connects if element mounted
-    useEffect(() => {
-      if (cameraEnabled && hasCameraStream && streamRef.current && videoRef.current) {
-        const video = videoRef.current;
-        if (video.srcObject !== streamRef.current) {
-          video.srcObject = streamRef.current;
-          video.muted = true;
-          video.play().catch(() => {});
-        }
-      }
-    }, [hasCameraStream, cameraEnabled]);
-
     // Expose captureSnapshot & controls to parent
     useImperativeHandle(ref, () => ({
       captureSnapshot: () => {
@@ -173,7 +177,7 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
                 ctx.translate(canvas.width, 0);
                 ctx.scale(-1, 1);
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                return canvas.toDataURL('image/jpeg', 0.92);
+                return canvas.toDataURL('image/jpeg', 0.95);
               }
             }
           } catch (e) {
@@ -189,10 +193,10 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
 
     return (
       <View style={styles.container}>
-        {/* ── 1. Video Element (Hardware Mirrored Feed) ── */}
+        {/* ── 1. Video Element (Always mounted on web when cameraEnabled, guaranteed stream binding) ── */}
         {Platform.OS === 'web' && cameraEnabled && (
           <video
-            ref={videoRef}
+            ref={setVideoElement}
             autoPlay
             playsInline
             muted
@@ -211,7 +215,7 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
           />
         )}
 
-        {/* ── 2. Frozen Snapshot or Fallback Demo View ── */}
+        {/* ── 2. Frozen Snapshot or Camera Paused State ── */}
         {frozenImageUri ? (
           <Image
             source={{ uri: frozenImageUri }}
@@ -219,12 +223,12 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
             resizeMode="cover"
           />
         ) : !cameraEnabled ? (
-          // Camera Turned Off by User
+          // Camera Paused by User
           <View style={styles.cameraOffContainer}>
             <View style={[styles.cameraOffPill, { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' }]}>
               <Text style={[styles.cameraOffTitle, { color: colors.text }]}>Camera Paused</Text>
               <Text style={[styles.cameraOffSubtitle, { color: colors.textSecondary }]}>
-                Hardware webcam stream is stopped
+                Hardware webcam feed is stopped
               </Text>
               <Pressable
                 style={[styles.resumeCameraBtn, { backgroundColor: colors.accent }]}
@@ -235,7 +239,7 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
             </View>
           </View>
         ) : !hasCameraStream ? (
-          // Loading / Requesting Permission
+          // Awaiting Permission / Loading Feed
           <View style={styles.fallbackContainer}>
             <Image
               source={{ uri: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=900&q=80' }}
@@ -256,21 +260,10 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
           </View>
         ) : null}
 
-        {/* ── 3. AR Augmented Transparent Hairstyle (No Black Box) ── */}
-        {showAugmentation && augmentedHairAsset && (
-          <View style={styles.hairAugmentationWrapper} pointerEvents="none">
-            <Image
-              source={augmentedHairAsset}
-              style={styles.augmentedHairImage}
-              resizeMode="contain"
-            />
-          </View>
-        )}
-
-        {/* ── 4. AR Neoclassical Reticle Overlay ── */}
+        {/* ── 3. AR Neoclassical Reticle Overlay (Clean Golden Ratio Oval) ── */}
         <BiometricOverlay visible={hudVisible} metrics={metrics} />
 
-        {/* ── 5. Status Pill ── */}
+        {/* ── 4. Status Pill ── */}
         <View style={styles.reticleBadgeWrapper}>
           <View
             style={[
@@ -381,20 +374,6 @@ const styles = StyleSheet.create({
     color: '#A8A29E',
     fontSize: 11,
     marginTop: 4,
-  },
-  hairAugmentationWrapper: {
-    position: 'absolute',
-    top: '7%',
-    alignSelf: 'center',
-    width: 290,
-    height: 270,
-    zIndex: 6,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  augmentedHairImage: {
-    width: '100%',
-    height: '100%',
   },
   reticleBadgeWrapper: {
     position: 'absolute',
