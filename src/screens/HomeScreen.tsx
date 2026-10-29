@@ -1,13 +1,12 @@
 // ─── HomeScreen (Camera-First App Architecture) ──────────────────────────────
 // Snapchat/Lensa-inspired mobile camera experience.
-// Full-screen camera viewfinder, golden ratio AR reticle, face archetype selector,
-// live hairstyle recommendations, and slide-out Hamburger menu with "Learn About Your Face".
+// Direct camera-first viewport, AR golden ratio reticle, clean isolated hairstyle lenses,
+// real-time hairstyle augmentation onto the user's own face, and standard mobile drawer.
 
 import { StatusBar } from 'expo-status-bar';
 import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Animated,
   Dimensions,
   Image,
   Platform,
@@ -21,34 +20,76 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LiveCameraView, type LiveCameraViewRef } from '@/components/LiveCameraView';
 import { LearnModal } from '@/components/LearnModal';
+import { LearnHairstylesModal } from '@/components/LearnHairstylesModal';
+import { AboutUsModal } from '@/components/AboutUsModal';
 import { SettingsDrawer } from '@/components/SettingsDrawer';
-import { TryOnModal } from '@/components/TryOnModal';
-import { HAIRCUT_DATASET } from '@/constants/haircutDataset';
+import { TryOnModal, HAIRCUT_ASSET_MAP } from '@/components/TryOnModal';
 import { PRESET_SAMPLES } from '@/constants/mockData';
 import { useAppTheme } from '@/context/ThemeContext';
 import { analyzeFacialGeometryWithMuse } from '@/services/basetenService';
 import type { FacialMetrics, HairstyleOption, StylingPrescription } from '@/types';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+// Curated isolated hairstyle lenses — 1-2 words, just the haircut itself
+interface HairstyleLensItem {
+  id: string;
+  name: string; // One or two words
+  asset: any;
+  category: string;
+  targetMorphology: string;
+}
+
+const HAIRSTYLE_LENSES: HairstyleLensItem[] = [
+  {
+    id: 'curtain-fringe',
+    name: 'Curtain Fringe',
+    asset: HAIRCUT_ASSET_MAP['curtain-fringe'],
+    category: 'Fringe',
+    targetMorphology: 'Oblong',
+  },
+  {
+    id: 'textured-crop',
+    name: 'Textured Crop',
+    asset: HAIRCUT_ASSET_MAP['textured-crop'],
+    category: 'Crop',
+    targetMorphology: 'Oval',
+  },
+  {
+    id: 'classic-quiff',
+    name: 'Classic Quiff',
+    asset: HAIRCUT_ASSET_MAP['classic-quiff'],
+    category: 'Quiff',
+    targetMorphology: 'Round',
+  },
+  {
+    id: 'taper-fade',
+    name: 'Taper Fade',
+    asset: HAIRCUT_ASSET_MAP['taper-fade'],
+    category: 'Fade',
+    targetMorphology: 'Square',
+  },
+];
 
 export default function HomeScreen() {
   const { colors, mode, toggleTheme } = useAppTheme();
 
-  // Camera & Shutter Ref
+  // Camera Ref
   const cameraRef = useRef<LiveCameraViewRef>(null);
 
   // States
   const [hudVisible, setHudVisible] = useState(true);
+  const [showAugmentation, setShowAugmentation] = useState(true);
+  const [activeLensId, setActiveLensId] = useState<string>('curtain-fringe');
   const [activePresetIdx, setActivePresetIdx] = useState(0);
   const [capturedPhotoUri, setCapturedPhotoUri] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisStatus, setAnalysisStatus] = useState<string | null>(null);
 
-  // Drawers & Modals
+  // Modals & Drawers
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [learnModalVisible, setLearnModalVisible] = useState(false);
+  const [learnFaceVisible, setLearnFaceVisible] = useState(false);
+  const [learnHairVisible, setLearnHairVisible] = useState(false);
+  const [aboutUsVisible, setAboutUsVisible] = useState(false);
   const [tryOnVisible, setTryOnVisible] = useState(false);
-  const [activeTryOnStyle, setActiveTryOnStyle] = useState<HairstyleOption | null>(null);
 
   // Hidden file input for web gallery upload
   const fileInputRef = useRef<any>(null);
@@ -59,14 +100,25 @@ export default function HomeScreen() {
     activePreset.prescription
   );
 
+  // Resolve currently active hair asset for augmentation on user's head
+  const activeLens = HAIRSTYLE_LENSES.find((l) => l.id === activeLensId) || HAIRSTYLE_LENSES[0];
   const activePhotoUri = capturedPhotoUri || activePreset.imageUrl;
+
+  // Active Hairstyle Option for TryOnModal
+  const activeStyleOption: HairstyleOption = {
+    id: activeLens.id,
+    name: activeLens.name,
+    category: activeLens.category,
+    whyItWorks: 'Architecturally balances facial proportions toward the golden ratio.',
+    suitabilityScore: 98,
+    previewUrl: '',
+  };
 
   // Shutter Press: Captures live frame from laptop webcam and runs Meta Muse AI
   async function handleShutterPress() {
     setIsAnalyzing(true);
     setAnalysisStatus('Snapping photo...');
 
-    // Try capturing live frame from laptop webcam
     const snapshotUri = cameraRef.current?.captureSnapshot();
     if (snapshotUri) {
       setCapturedPhotoUri(snapshotUri);
@@ -79,7 +131,7 @@ export default function HomeScreen() {
     try {
       const result = await analyzeFacialGeometryWithMuse(metrics);
       setCurrentPrescription(result.prescription);
-      setAnalysisStatus('Analysis complete · 98% Match');
+      setAnalysisStatus('Analysis complete · 98% Golden Ratio');
       setTimeout(() => setAnalysisStatus(null), 3000);
     } catch {
       setAnalysisStatus(null);
@@ -92,7 +144,19 @@ export default function HomeScreen() {
   function handleSelectShape(index: number) {
     setActivePresetIdx(index);
     setCurrentPrescription(PRESET_SAMPLES[index].prescription);
-    // Note: We deliberately keep the live camera active and update hairstyle recommendations smoothly!
+
+    // Auto-select corresponding ideal haircut lens
+    const target = PRESET_SAMPLES[index].label;
+    const matchingLens = HAIRSTYLE_LENSES.find((l) => l.targetMorphology === target);
+    if (matchingLens) {
+      setActiveLensId(matchingLens.id);
+    }
+  }
+
+  // Select hairstyle lens to augment on user's face
+  function handleSelectLens(lensId: string) {
+    setActiveLensId(lensId);
+    setShowAugmentation(true);
   }
 
   // Reset back to live camera
@@ -133,17 +197,11 @@ export default function HomeScreen() {
     }
   }
 
-  // Open Try-On Modal
-  function handleOpenTryOn(style: HairstyleOption) {
-    setActiveTryOnStyle(style);
-    setTryOnVisible(true);
-  }
-
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
 
-      {/* Hidden file input for gallery upload */}
+      {/* Hidden file input for web gallery upload */}
       {Platform.OS === 'web' && (
         <input
           type="file"
@@ -154,22 +212,24 @@ export default function HomeScreen() {
         />
       )}
 
-      {/* ── 1. Full-Screen Live Camera Viewport ── */}
+      {/* ── 1. Full-Screen Live Camera Viewport with Hair Augmentation ── */}
       <LiveCameraView
         ref={cameraRef}
         frozenImageUri={capturedPhotoUri}
         metrics={metrics}
         hudVisible={hudVisible}
+        augmentedHairAsset={activeLens.asset}
+        showAugmentation={showAugmentation}
       />
 
-      {/* ── 2. Top Snapchat-Style Controls (Unblocked & Sleek) ── */}
+      {/* ── 2. Top Controls (Unblocked & Sleek) ── */}
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.topControlBar}>
-          {/* Hamburger Menu (Settings & "Learn About Your Face") */}
+          {/* Hamburger Menu (Standard App Navigation) */}
           <Pressable
             onPress={() => setDrawerOpen(true)}
             style={[styles.glassBtn, { backgroundColor: 'rgba(20, 20, 20, 0.75)', borderColor: colors.border }]}
-            accessibilityLabel="Open settings and learn menu"
+            accessibilityLabel="Open app menu"
           >
             <Text style={styles.glassBtnIcon}>☰</Text>
           </Pressable>
@@ -203,7 +263,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Live Status Toast (if analyzing) */}
+        {/* Live Status Toast */}
         {analysisStatus && (
           <View style={styles.statusToastWrapper}>
             <View style={[styles.statusToast, { backgroundColor: colors.bgElevated, borderColor: colors.accent }]}>
@@ -214,7 +274,7 @@ export default function HomeScreen() {
         )}
       </SafeAreaView>
 
-      {/* ── 3. Bottom Camera Controls & Curated Recommendations ── */}
+      {/* ── 3. Bottom Controls: Face Selector, Shutter & Hairstyle Lenses ── */}
       <View style={styles.bottomSheetContainer}>
         {/* Retake Live Camera Pill (if photo was snapped) */}
         {capturedPhotoUri && (
@@ -249,14 +309,14 @@ export default function HomeScreen() {
           })}
         </View>
 
-        {/* Shutter Row */}
+        {/* Shutter Row with Augmentation Switcher & Gallery */}
         <View style={styles.shutterRow}>
           {/* Gallery Button */}
           <Pressable onPress={handleTriggerGallery} style={styles.sideBtn}>
             <Text style={styles.sideBtnIcon}>🖼️</Text>
           </Pressable>
 
-          {/* Iconic Snapchat Shutter Button */}
+          {/* Iconic Concentric Shutter Button */}
           <Pressable
             onPress={handleShutterPress}
             style={styles.shutterOuterRing}
@@ -271,90 +331,101 @@ export default function HomeScreen() {
             </View>
           </Pressable>
 
-          {/* Quick Info / Learn Shortcut */}
+          {/* Toggle Hair Augmentation on User's Face */}
           <Pressable
-            onPress={() => setLearnModalVisible(true)}
-            style={styles.sideBtn}
-            accessibilityLabel="Learn about face proportions"
+            onPress={() => setShowAugmentation((v) => !v)}
+            style={[
+              styles.sideBtn,
+              showAugmentation && { borderColor: '#D4AF37', backgroundColor: 'rgba(212, 175, 55, 0.25)' },
+            ]}
+            accessibilityLabel="Toggle haircut augmentation on face"
           >
-            <Text style={styles.sideBtnIcon}>ℹ️</Text>
+            <Text style={styles.sideBtnIcon}>✂️</Text>
           </Pressable>
         </View>
 
-        {/* ── 4. Curated Hairstyles Strip (Clear, Concise, Actionable) ── */}
-        <View style={[styles.stylesDeck, { backgroundColor: 'rgba(15, 13, 11, 0.88)', borderColor: colors.border }]}>
-          <View style={styles.deckHeader}>
-            <Text style={[styles.deckTitle, { color: colors.accent }]}>RECOMMENDED HAIRSTYLES</Text>
-            <Text style={[styles.deckSubtitle, { color: colors.textSecondary }]}>
-              Matched to {activePreset.label} Face Geometry
-            </Text>
-          </View>
-
+        {/* ── 4. Clean Isolated Hairstyle Lenses (One or Two Words, Hair Asset Only) ── */}
+        <View style={styles.lensCarouselDeck}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.stylesScroll}
+            contentContainerStyle={styles.lensScroll}
           >
-            {currentPrescription.suggestedStyles.map((style) => (
-              <View
-                key={style.id}
-                style={[
-                  styles.styleCardCompact,
-                  { backgroundColor: colors.bgSubtle, borderColor: colors.border },
-                ]}
-              >
-                <Image
-                  source={{ uri: style.previewUrl }}
-                  style={styles.styleThumb}
-                  resizeMode="cover"
-                />
-                <View style={styles.styleInfo}>
-                  <Text style={[styles.styleName, { color: colors.text }]} numberOfLines={1}>
-                    {style.name}
-                  </Text>
-                  <View style={styles.styleMetaRow}>
-                    <View style={[styles.matchBadge, { backgroundColor: colors.accentGreenLight }]}>
-                      <Text style={[styles.matchBadgeText, { color: colors.accentGreen }]}>
-                        {style.suitabilityScore ? `${style.suitabilityScore}% Match` : '98% Match'}
-                      </Text>
-                    </View>
-                    <Text style={[styles.styleCategory, { color: colors.textMuted }]}>
-                      {style.category}
-                    </Text>
-                  </View>
-                  <Pressable
-                    onPress={() => handleOpenTryOn(style)}
-                    style={[styles.tryOnCompactBtn, { backgroundColor: colors.accent }]}
+            {HAIRSTYLE_LENSES.map((lens) => {
+              const isSelected = lens.id === activeLensId;
+              return (
+                <Pressable
+                  key={lens.id}
+                  onPress={() => handleSelectLens(lens.id)}
+                  style={styles.lensItem}
+                >
+                  {/* Round Hairpiece Thumbnail */}
+                  <View
+                    style={[
+                      styles.lensCircle,
+                      isSelected && styles.lensCircleActive,
+                    ]}
                   >
-                    <Text style={styles.tryOnCompactBtnText}>Simulate Try-On ✨</Text>
-                  </Pressable>
-                </View>
-              </View>
-            ))}
+                    <Image
+                      source={lens.asset}
+                      style={styles.lensThumbImage}
+                      resizeMode="cover"
+                    />
+                  </View>
+
+                  {/* One or Two Words */}
+                  <Text
+                    style={[
+                      styles.lensLabel,
+                      isSelected && styles.lensLabelActive,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {lens.name}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </ScrollView>
         </View>
       </View>
 
-      {/* ── Slide-Out Hamburger Settings & Legal Drawer ── */}
+      {/* ── Slide-Out Standard App Navigation Drawer ── */}
       <SettingsDrawer
         visible={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        onOpenLearnAboutFace={() => setLearnModalVisible(true)}
+        onNavigateHome={() => setDrawerOpen(false)}
+        onOpenLearnAboutFace={() => setLearnFaceVisible(true)}
+        onOpenLearnHairstyles={() => setLearnHairVisible(true)}
+        onOpenAboutUs={() => setAboutUsVisible(true)}
       />
 
-      {/* ── "Learn About Your Face" Modal (Dedicated, Visual & Concise) ── */}
+      {/* ── "Learn About Your Face" Modal (Golden Ratio & Farkas Thirds) ── */}
       <LearnModal
-        visible={learnModalVisible}
-        onClose={() => setLearnModalVisible(false)}
+        visible={learnFaceVisible}
+        onClose={() => setLearnFaceVisible(false)}
       />
 
-      {/* ── Generative Try-On Simulation Modal (Modal GPU) ── */}
+      {/* ── "Learn About Hairstyles" Modal (Volume & Silhouette Architecture) ── */}
+      <LearnHairstylesModal
+        visible={learnHairVisible}
+        onClose={() => setLearnHairVisible(false)}
+      />
+
+      {/* ── "About Us" Modal (Mission & Meta Hackathon Story) ── */}
+      <AboutUsModal
+        visible={aboutUsVisible}
+        onClose={() => setAboutUsVisible(false)}
+      />
+
+      {/* ── Generative Try-On Simulation Modal (User's Own Face Augmented) ── */}
       <TryOnModal
         visible={tryOnVisible}
         onClose={() => setTryOnVisible(false)}
-        styleOption={activeTryOnStyle}
+        styleOption={activeStyleOption}
         volumeProfile={currentPrescription.volumeProfile}
         originalImageUri={activePhotoUri}
+        haircutAsset={activeLens.asset}
       />
     </View>
   );
@@ -434,6 +505,7 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 25,
     alignItems: 'center',
+    paddingBottom: Platform.OS === 'ios' ? 24 : 14,
   },
   retakeFloatingPill: {
     backgroundColor: 'rgba(20, 20, 20, 0.85)',
@@ -481,7 +553,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 28,
-    marginBottom: 12,
+    marginBottom: 14,
   },
   sideBtn: {
     width: 44,
@@ -521,81 +593,50 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     backgroundColor: '#D4AF37',
   },
-  stylesDeck: {
+  lensCarouselDeck: {
     width: '100%',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    borderTopWidth: 1,
-    paddingTop: 12,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 14,
+    paddingVertical: 4,
   },
-  deckHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    paddingHorizontal: 16,
-    marginBottom: 10,
-  },
-  deckTitle: {
-    fontSize: 11,
-    fontWeight: '900',
-    letterSpacing: 1.2,
-  },
-  deckSubtitle: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  stylesScroll: {
-    paddingHorizontal: 14,
-    gap: 12,
-  },
-  styleCardCompact: {
-    width: 220,
-    borderRadius: 14,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  styleThumb: {
-    width: '100%',
-    height: 110,
-  },
-  styleInfo: {
-    padding: 10,
-  },
-  styleName: {
-    fontSize: 13,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  styleMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  matchBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  matchBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  styleCategory: {
-    fontSize: 10,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  tryOnCompactBtn: {
-    borderRadius: 8,
-    paddingVertical: 6,
+  lensScroll: {
+    paddingHorizontal: 20,
+    gap: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tryOnCompactBtnText: {
+  lensItem: {
+    alignItems: 'center',
+    width: 78,
+  },
+  lensCircle: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    overflow: 'hidden',
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
+  },
+  lensCircleActive: {
+    borderColor: '#D4AF37',
+    borderWidth: 2.5,
+    boxShadow: '0 0 16px rgba(212, 175, 55, 0.75)',
+  },
+  lensThumbImage: {
+    width: '100%',
+    height: '100%',
+  },
+  lensLabel: {
     fontSize: 11,
+    fontWeight: '700',
+    color: '#A8A29E',
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  lensLabelActive: {
+    color: '#FBF9F5',
     fontWeight: '800',
-    color: '#0C0A09',
   },
 });

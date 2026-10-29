@@ -27,10 +27,12 @@ interface LiveCameraViewProps {
   metrics: FacialMetrics;
   hudVisible: boolean;
   onCameraActive?: (active: boolean) => void;
+  augmentedHairAsset?: any;
+  showAugmentation?: boolean;
 }
 
 export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>(
-  ({ frozenImageUri, metrics, hudVisible, onCameraActive }, ref) => {
+  ({ frozenImageUri, metrics, hudVisible, onCameraActive, augmentedHairAsset, showAugmentation = true }, ref) => {
     const { colors } = useAppTheme();
     const [hasCameraStream, setHasCameraStream] = useState(false);
     const [cameraPermissionError, setCameraPermissionError] = useState(false);
@@ -211,6 +213,20 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
           </View>
         ) : null}
 
+        {/* ── AR Augmented Hairpiece onto User's Face ── */}
+        {showAugmentation && augmentedHairAsset && (
+          <View style={styles.hairAugmentationWrapper} pointerEvents="none">
+            <Image
+              source={augmentedHairAsset}
+              style={[
+                styles.augmentedHairImage,
+                Platform.OS === 'web' && ({ mixBlendMode: 'screen' } as any),
+              ]}
+              resizeMode="contain"
+            />
+          </View>
+        )}
+
         {/* ── 3. AR Neoclassical Reticle Overlay ── */}
         <BiometricOverlay visible={hudVisible} metrics={metrics} />
 
@@ -315,5 +331,19 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1,
+  },
+  hairAugmentationWrapper: {
+    position: 'absolute',
+    top: '10%',
+    alignSelf: 'center',
+    width: 320,
+    height: 300,
+    zIndex: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  augmentedHairImage: {
+    width: '100%',
+    height: '100%',
   },
 });

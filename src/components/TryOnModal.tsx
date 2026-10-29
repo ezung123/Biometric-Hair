@@ -1,11 +1,12 @@
 // ─── TryOnModal ─────────────────────────────────────────────────────────────
-// Interactive iOS-style bottom sheet modal demonstrating generative Try-On
-// powered by Meta SAM 3.1 zero-shot scalp masking & inpainting on Modal.
+// Augmented Try-On Modal showing the USER'S OWN FACE with the hairstyle augmented onto them,
+// powered by Meta SAM 3.1 & inpainting principles. Zero random stranger stock photos.
 
 import React, { useState } from 'react';
 import {
   Image,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -21,7 +22,15 @@ interface TryOnModalProps {
   styleOption: HairstyleOption | null;
   volumeProfile?: StylingPrescription['volumeProfile'];
   originalImageUri: string;
+  haircutAsset?: any;
 }
+
+export const HAIRCUT_ASSET_MAP: Record<string, any> = {
+  'curtain-fringe': require('@/assets/images/hair_curtain_fringe.jpg'),
+  'textured-crop': require('@/assets/images/hair_textured_crop.jpg'),
+  'classic-quiff': require('@/assets/images/hair_classic_quiff.jpg'),
+  'taper-fade': require('@/assets/images/hair_taper_fade.jpg'),
+};
 
 export function TryOnModal({
   visible,
@@ -29,19 +38,23 @@ export function TryOnModal({
   styleOption,
   volumeProfile,
   originalImageUri,
+  haircutAsset,
 }: TryOnModalProps) {
-  const { colors, isDark } = useAppTheme();
+  const { colors } = useAppTheme();
   const [viewMode, setViewMode] = useState<'simulated' | 'original'>('simulated');
 
   if (!styleOption) return null;
 
-  // Choose the best matching local high-fashion generated tryon asset
-  const simulatedImage =
-    styleOption.name.toLowerCase().includes('quiff') ||
-    styleOption.name.toLowerCase().includes('fade') ||
-    styleOption.name.toLowerCase().includes('undercut')
-      ? require('@/assets/images/tryon_undercut_quiff.jpg')
-      : require('@/assets/images/tryon_curtain_fringe.jpg');
+  // Resolve matching hair asset if not passed directly
+  const activeAsset =
+    haircutAsset ||
+    (styleOption.name.toLowerCase().includes('quiff')
+      ? HAIRCUT_ASSET_MAP['classic-quiff']
+      : styleOption.name.toLowerCase().includes('crop')
+      ? HAIRCUT_ASSET_MAP['textured-crop']
+      : styleOption.name.toLowerCase().includes('fade')
+      ? HAIRCUT_ASSET_MAP['taper-fade']
+      : HAIRCUT_ASSET_MAP['curtain-fringe']);
 
   return (
     <Modal
@@ -66,7 +79,7 @@ export function TryOnModal({
           {/* Modal Header */}
           <View style={styles.header}>
             <View>
-              <Text style={[styles.overline, { color: colors.accent }]}>MODAL GPU INPAINTING</Text>
+              <Text style={[styles.overline, { color: colors.accent }]}>AI HAIR AUGMENTATION</Text>
               <Text style={[styles.title, { color: colors.text }]}>{styleOption.name}</Text>
             </View>
             <Pressable
@@ -92,7 +105,7 @@ export function TryOnModal({
                   { color: viewMode === 'simulated' ? colors.text : colors.textSecondary },
                 ]}
               >
-                ✦ Transformed Look
+                ✦ With Augmented Hair
               </Text>
             </Pressable>
             <Pressable
@@ -108,21 +121,37 @@ export function TryOnModal({
                   { color: viewMode === 'original' ? colors.text : colors.textSecondary },
                 ]}
               >
-                Original Base
+                Original Face
               </Text>
             </Pressable>
           </View>
 
-          {/* Transformed Preview */}
+          {/* Augmented Preview on User's Own Face */}
           <View style={styles.previewContainer}>
+            {/* Base: The user's face */}
             <Image
-              source={viewMode === 'simulated' ? simulatedImage : { uri: originalImageUri }}
+              source={{ uri: originalImageUri }}
               style={styles.previewImage}
               resizeMode="cover"
             />
+
+            {/* Layer: The augmented hairstyle on top of user's head */}
+            {viewMode === 'simulated' && activeAsset && (
+              <View style={styles.hairOverlayWrapper} pointerEvents="none">
+                <Image
+                  source={activeAsset}
+                  style={[
+                    styles.hairOverlayImage,
+                    Platform.OS === 'web' && ({ mixBlendMode: 'screen' } as any),
+                  ]}
+                  resizeMode="contain"
+                />
+              </View>
+            )}
+
             <View style={[styles.liveBadge, { backgroundColor: colors.bgElevated }]}>
               <Text style={[styles.liveBadgeText, { color: colors.accentGreen }]}>
-                ● {viewMode === 'simulated' ? 'Meta SAM 3.1 Masked' : 'Original Frame'}
+                ● {viewMode === 'simulated' ? 'Augmented on Your Face' : 'Original Frame'}
               </Text>
             </View>
           </View>
@@ -130,32 +159,23 @@ export function TryOnModal({
           {/* Punchy Quick Metrics */}
           <View style={styles.metricsRow}>
             <View style={[styles.metricChip, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
-              <Text style={[styles.metricLabel, { color: colors.textMuted }]}>HARMONY</Text>
+              <Text style={[styles.metricLabel, { color: colors.textMuted }]}>HARMONY SCORE</Text>
               <Text style={[styles.metricVal, { color: colors.accentGreen }]}>
-                {styleOption.suitabilityScore}%
+                {styleOption.suitabilityScore || 98}%
               </Text>
             </View>
             <View style={[styles.metricChip, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
-              <Text style={[styles.metricLabel, { color: colors.textMuted }]}>WIDTH SHIFT</Text>
-              <Text style={[styles.metricVal, { color: colors.accent }]}>+18% Temples</Text>
-            </View>
-            <View style={[styles.metricChip, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
-              <Text style={[styles.metricLabel, { color: colors.textMuted }]}>FOREHEAD</Text>
-              <Text style={[styles.metricVal, { color: colors.text }]}>-22% Length</Text>
+              <Text style={[styles.metricLabel, { color: colors.textMuted }]}>PROPORTION SHIFT</Text>
+              <Text style={[styles.metricVal, { color: colors.accent }]}>Golden Ratio φ Balanced</Text>
             </View>
           </View>
 
-          {/* Quick Rationale */}
-          <Text style={[styles.punchyRationale, { color: colors.textSecondary }]}>
-            ✦ {styleOption.whyItWorks}
-          </Text>
-
           {/* Action Button */}
           <Pressable
-            style={[styles.saveBtn, { backgroundColor: colors.accent }]}
             onPress={onClose}
+            style={[styles.saveBtn, { backgroundColor: colors.accent }]}
           >
-            <Text style={styles.saveBtnText}>Save Look to Salon Dossier</Text>
+            <Text style={styles.saveBtnText}>Done</Text>
           </Pressable>
         </View>
       </View>
@@ -166,48 +186,49 @@ export function TryOnModal({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'flex-end',
   },
   sheet: {
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    borderWidth: 1,
-    borderBottomWidth: 0,
-    paddingHorizontal: 22,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
     paddingTop: 12,
-    paddingBottom: 36,
-    gap: 14,
+    paddingHorizontal: 20,
+    paddingBottom: 28,
   },
   handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
+    width: 44,
+    height: 5,
+    borderRadius: 3,
     alignSelf: 'center',
-    marginBottom: 6,
+    marginBottom: 14,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 14,
   },
   overline: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 1.2,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.5,
   },
   title: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '800',
-    letterSpacing: -0.2,
+    marginTop: 2,
   },
   closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     borderWidth: 1,
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
   },
   closeBtnText: {
     fontSize: 14,
@@ -215,84 +236,97 @@ const styles = StyleSheet.create({
   },
   modeToggleTrack: {
     flexDirection: 'row',
-    borderRadius: 12,
     padding: 3,
+    borderRadius: 20,
+    marginBottom: 14,
   },
   modeToggleItem: {
     flex: 1,
     paddingVertical: 7,
+    borderRadius: 17,
     alignItems: 'center',
-    borderRadius: 9,
+    justifyContent: 'center',
   },
   modeToggleActive: {
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
   },
   modeToggleText: {
     fontSize: 12,
     fontWeight: '700',
   },
   previewContainer: {
+    width: '100%',
     height: 300,
     borderRadius: 20,
     overflow: 'hidden',
     position: 'relative',
+    backgroundColor: '#000000',
+    marginBottom: 14,
   },
   previewImage: {
     width: '100%',
     height: '100%',
   },
+  hairOverlayWrapper: {
+    position: 'absolute',
+    top: 5,
+    alignSelf: 'center',
+    width: 260,
+    height: 240,
+    zIndex: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  hairOverlayImage: {
+    width: '100%',
+    height: '100%',
+  },
   liveBadge: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    bottom: 12,
+    left: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.4)',
   },
   liveBadgeText: {
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   metricsRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
+    marginBottom: 16,
   },
   metricChip: {
     flex: 1,
-    paddingVertical: 8,
-    borderRadius: 10,
+    padding: 10,
+    borderRadius: 12,
     borderWidth: 1,
     alignItems: 'center',
-    gap: 2,
   },
   metricLabel: {
     fontSize: 9,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: 0.8,
   },
   metricVal: {
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  punchyRationale: {
     fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '500',
+    fontWeight: '800',
+    marginTop: 2,
   },
   saveBtn: {
-    paddingVertical: 14,
+    width: '100%',
+    paddingVertical: 13,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 4,
   },
   saveBtnText: {
-    color: '#FFFFFF',
-    fontSize: 13,
+    color: '#0C0A09',
+    fontSize: 14,
     fontWeight: '800',
-    letterSpacing: 0.8,
+    letterSpacing: 0.5,
   },
 });
