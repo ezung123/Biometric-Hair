@@ -1,327 +1,321 @@
-// ─── MetricCards ─────────────────────────────────────────────────────────────
-// Dark-themed metric summary panel with face shape + facial index card,
-// golden ratio card, thirds variance card, and three progress bars for
-// the upper / mid / lower thirds against the 33.3% canonical baseline.
+// ─── MetricCards (Harmonic Balance Dossier) ──────────────────────────────────
+// Aggregated, editorial aesthetic summary of Neoclassical facial metrics,
+// Golden Ratio (φ ≈ 1.618) alignment, and compensatory volume vectors.
+// Adapts reactively to Luxury Cream and Titanium Obsidian themes.
 
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import type { FacialMetrics } from '@/types';
+import { useAppTheme } from '@/context/ThemeContext';
+import { calculateFacialHarmony } from '@/services/anthropometrics';
 
 interface MetricCardsProps {
   metrics: FacialMetrics;
 }
 
-// ── Design tokens ──────────────────────────────────────────────────────────
-const C = {
-  bg: '#09090b',
-  card: '#18181b',
-  border: '#27272a',
-  text: '#fafafa',
-  muted: '#a1a1aa',
-  cyan: '#22d3ee',
-  amber: '#f59e0b',
-  pink: '#f472b6',
-  purple: '#a855f7',
-  green: '#4ade80',
-};
-
-// ── Helpers ────────────────────────────────────────────────────────────────
-function goldenMatchPct(deviation: number): number {
-  // deviation 0 → 100%; deviation 0.5+ → ~0%
-  return Math.max(0, Math.round((1 - deviation / 0.5) * 100));
-}
-
-function ProgressBar({
-  pct,
-  color,
-  label,
-}: {
-  pct: number;
-  color: string;
-  label: string;
-}) {
-  const deviation = Math.abs(pct - 33.3);
-  return (
-    <View style={styles.barRow}>
-      <Text style={[styles.barLabel, { color: C.muted }]}>{label}</Text>
-      <View style={styles.barTrack}>
-        {/* canonical 33.3% baseline marker */}
-        <View style={[styles.baseline, { left: '33.3%' as any }]} />
-        <View
-          style={[
-            styles.barFill,
-            { width: `${Math.min(pct, 100)}%` as any, backgroundColor: color },
-          ]}
-        />
-      </View>
-      <Text style={[styles.barPct, { color }]}>{pct.toFixed(1)}%</Text>
-      <Text style={[styles.barDev, { color: deviation > 5 ? C.amber : C.green }]}>
-        {deviation > 0.05 ? `${deviation > 0 ? '+' : ''}${(pct - 33.3).toFixed(1)}` : '±0'}
-      </Text>
-    </View>
-  );
-}
-
-function MetricChip({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: string;
-  accent: string;
-}) {
-  return (
-    <View style={[styles.chip, { borderColor: accent + '55' }]}>
-      <Text style={[styles.chipLabel, { color: C.muted }]}>{label}</Text>
-      <Text style={[styles.chipValue, { color: accent }]}>{value}</Text>
-    </View>
-  );
-}
-
-// ── Component ──────────────────────────────────────────────────────────────
 export function MetricCards({ metrics }: MetricCardsProps) {
-  const { faceShape, facialIndex, verticalThirds, goldenRatioDeviation } = metrics;
-  const goldenPct = goldenMatchPct(goldenRatioDeviation);
+  const { colors, isDark } = useAppTheme();
+  const harmony = calculateFacialHarmony(
+    metrics.facialIndex,
+    metrics.verticalThirds.upperThirdPct,
+    metrics.verticalThirds.midThirdPct,
+    metrics.verticalThirds.lowerThirdPct
+  );
+
+  const { upperThirdPct, midThirdPct, lowerThirdPct } = metrics.verticalThirds;
 
   return (
-    <View style={styles.container}>
-      {/* ── Section header ── */}
-      <Text style={styles.sectionHeader}>BIOMETRIC ANALYSIS</Text>
-
-      {/* ── Top row: 3 chips ── */}
-      <View style={styles.chipRow}>
-        <MetricChip
-          label="FACE SHAPE"
-          value={faceShape.toUpperCase()}
-          accent={C.purple}
-        />
-        <MetricChip
-          label="FACIAL INDEX"
-          value={`${facialIndex}`}
-          accent={C.cyan}
-        />
-        <MetricChip
-          label="φ MATCH"
-          value={`${goldenPct}%`}
-          accent={goldenPct >= 85 ? C.green : C.amber}
-        />
-      </View>
-
-      {/* ── Thirds variance ── */}
-      <View style={[styles.card, styles.varianceCard]}>
-        <View style={styles.varianceHeader}>
-          <Text style={styles.cardTitle}>THIRDS VARIANCE SCORE</Text>
-          <Text style={[styles.varianceScore, { color: verticalThirds.varianceScore > 5 ? C.amber : C.green }]}>
-            {verticalThirds.varianceScore.toFixed(2)}
-          </Text>
-        </View>
-        <Text style={styles.varianceSub}>
-          Deviation from canonical 33.3 / 33.3 / 33.3 distribution
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
+      {/* ── Section Title ── */}
+      <View style={styles.headerRow}>
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+          NEOCLASSICAL HARMONIC BALANCE
         </Text>
-
-        {/* ── Progress bars ── */}
-        <View style={styles.barsContainer}>
-          <ProgressBar
-            pct={verticalThirds.upperThirdPct}
-            color={C.cyan}
-            label="UPPER"
-          />
-          <ProgressBar
-            pct={verticalThirds.midThirdPct}
-            color={C.amber}
-            label="MID  "
-          />
-          <ProgressBar
-            pct={verticalThirds.lowerThirdPct}
-            color={C.pink}
-            label="LOWER"
-          />
+        <View style={[styles.phiBadge, { backgroundColor: colors.accentLight }]}>
+          <Text style={[styles.phiText, { color: colors.accent }]}>φ 1.618 RATIO</Text>
         </View>
       </View>
 
-      {/* ── Golden ratio deviation indicator ── */}
-      <View style={[styles.card, styles.phiCard]}>
-        <View style={styles.phiRow}>
-          <Text style={styles.phiSymbol}>φ</Text>
-          <View style={styles.phiText}>
-            <Text style={styles.cardTitle}>GOLDEN RATIO DEVIATION</Text>
-            <Text style={[styles.phiValue, { color: goldenPct >= 85 ? C.green : C.amber }]}>
-              {goldenRatioDeviation.toFixed(3)} — {goldenPct >= 85 ? 'Near-Ideal' : 'Moderate'}
+      {/* ── Unified Primary Balance Card ── */}
+      <View
+        style={[
+          styles.mainCard,
+          {
+            backgroundColor: colors.bgElevated,
+            borderColor: colors.border,
+            shadowColor: colors.cardShadow,
+          },
+        ]}
+      >
+        {/* Top: Score & Morphology Classification */}
+        <View style={styles.cardTopRow}>
+          <View style={styles.scoreBlock}>
+            <Text style={[styles.scoreNumber, { color: colors.text }]}>
+              {harmony.harmonicBalanceScore}
+              <Text style={[styles.scorePercent, { color: colors.accent }]}>%</Text>
+            </Text>
+            <Text style={[styles.scoreCaption, { color: colors.textSecondary }]}>
+              Harmonic Equivalence
             </Text>
           </View>
-          <Text style={[styles.bigPct, { color: goldenPct >= 85 ? C.green : C.amber }]}>
-            {goldenPct}%
-          </Text>
+
+          <View style={styles.classificationBlock}>
+            <View style={[styles.shapePill, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
+              <Text style={[styles.shapePillText, { color: colors.text }]}>
+                {metrics.faceShape.toUpperCase()}
+              </Text>
+            </View>
+            <Text style={[styles.morphologyText, { color: colors.textSecondary }]}>
+              {harmony.morphologyCategory}
+            </Text>
+            <Text style={[styles.indexValue, { color: colors.textMuted }]}>
+              Facial Index {metrics.facialIndex.toFixed(1)}
+            </Text>
+          </View>
         </View>
-        {/* mini gauge */}
-        <View style={styles.gaugeTrack}>
-          <View
-            style={[
-              styles.gaugeFill,
-              {
-                width: `${goldenPct}%` as any,
-                backgroundColor: goldenPct >= 85 ? C.green : C.amber,
-              },
-            ]}
-          />
+
+        {/* Divider */}
+        <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
+
+        {/* ── Unified Vertical Thirds Balance Bar ── */}
+        <View style={styles.thirdsSection}>
+          <View style={styles.thirdsHeaderRow}>
+            <Text style={[styles.thirdsLabel, { color: colors.textSecondary }]}>
+              FARKAS VERTICAL THIRDS DISTRIBUTION
+            </Text>
+            <Text style={[styles.baselineLabel, { color: colors.textMuted }]}>
+              Baseline: 33.3%
+            </Text>
+          </View>
+
+          {/* Continuous segmented horizontal balance bar */}
+          <View style={[styles.triBarTrack, { backgroundColor: colors.bgSubtle }]}>
+            <View
+              style={[
+                styles.triBarSegment,
+                {
+                  width: `${upperThirdPct}%`,
+                  backgroundColor: isDark ? '#D4AF37' : '#A06E3B',
+                },
+              ]}
+            />
+            <View
+              style={[
+                styles.triBarSegment,
+                {
+                  width: `${midThirdPct}%`,
+                  backgroundColor: isDark ? '#B8972D' : '#C59A45',
+                },
+              ]}
+            />
+            <View
+              style={[
+                styles.triBarSegment,
+                {
+                  width: `${lowerThirdPct}%`,
+                  backgroundColor: isDark ? '#8F7522' : '#8A5D2A',
+                },
+              ]}
+            />
+          </View>
+
+          {/* Tri-segment legends */}
+          <View style={styles.thirdsLegendRow}>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: isDark ? '#D4AF37' : '#A06E3B' }]} />
+              <Text style={[styles.legendName, { color: colors.textSecondary }]}>Hairline</Text>
+              <Text style={[styles.legendValue, { color: colors.text }]}>{upperThirdPct.toFixed(1)}%</Text>
+            </View>
+
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: isDark ? '#B8972D' : '#C59A45' }]} />
+              <Text style={[styles.legendName, { color: colors.textSecondary }]}>Brow-to-Nose</Text>
+              <Text style={[styles.legendValue, { color: colors.text }]}>{midThirdPct.toFixed(1)}%</Text>
+            </View>
+
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: isDark ? '#8F7522' : '#8A5D2A' }]} />
+              <Text style={[styles.legendName, { color: colors.textSecondary }]}>Jaw-to-Chin</Text>
+              <Text style={[styles.legendValue, { color: colors.text }]}>{lowerThirdPct.toFixed(1)}%</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ── Mathematical Architecture Rationale ── */}
+        <View style={[styles.rationaleContainer, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
+          <View style={styles.rationaleHeader}>
+            <Text style={[styles.rationaleIcon, { color: colors.accent }]}>✦</Text>
+            <Text style={[styles.rationaleTitle, { color: colors.accent }]}>
+              VOLUMETRIC PRESCRIPTION VECTOR
+            </Text>
+          </View>
+          <Text style={[styles.rationaleText, { color: colors.textSecondary }]}>
+            {harmony.compensatoryVector.mathematicalRationale}
+          </Text>
         </View>
       </View>
     </View>
   );
 }
 
-// ── Styles ─────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: C.bg,
-    paddingHorizontal: 16,
-    paddingTop: 20,
-    paddingBottom: 12,
-    gap: 12,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
   },
-  sectionHeader: {
-    fontSize: 11,
-    fontFamily: 'monospace',
-    color: C.muted,
-    letterSpacing: 2,
-    marginBottom: 2,
-  },
-  chipRow: {
+  headerRow: {
     flexDirection: 'row',
-    gap: 10,
-  },
-  chip: {
-    flex: 1,
-    backgroundColor: C.card,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 10,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+  },
+  phiBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  phiText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+  },
+  mainCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 18,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 12,
+    elevation: 2,
+    gap: 16,
+  },
+  cardTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  scoreBlock: {
+    gap: 2,
+  },
+  scoreNumber: {
+    fontSize: 38,
+    fontWeight: '800',
+    letterSpacing: -1,
+    lineHeight: 44,
+  },
+  scorePercent: {
+    fontSize: 22,
+    fontWeight: '600',
+  },
+  scoreCaption: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  classificationBlock: {
+    alignItems: 'flex-end',
     gap: 4,
   },
-  chipLabel: {
-    fontSize: 9,
-    fontFamily: 'monospace',
+  shapePill: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  shapePillText: {
+    fontSize: 12,
+    fontWeight: '700',
     letterSpacing: 1,
   },
-  chipValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+  morphologyText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
-  card: {
-    backgroundColor: C.card,
-    borderWidth: 1,
-    borderColor: C.border,
-    borderRadius: 12,
-    padding: 14,
+  indexValue: {
+    fontSize: 11,
+    fontWeight: '500',
   },
-  varianceCard: {
-    gap: 10,
+  divider: {
+    height: 1,
+    width: '100%',
   },
-  varianceHeader: {
+  thirdsSection: {
+    gap: 8,
+  },
+  thirdsHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  cardTitle: {
+  thirdsLabel: {
     fontSize: 10,
-    fontFamily: 'monospace',
-    color: C.muted,
-    letterSpacing: 1.5,
+    fontWeight: '700',
+    letterSpacing: 0.8,
   },
-  varianceScore: {
-    fontSize: 22,
-    fontWeight: '800',
+  baselineLabel: {
+    fontSize: 10,
+    fontWeight: '500',
   },
-  varianceSub: {
-    fontSize: 11,
-    color: C.muted,
-    marginTop: -4,
-  },
-  barsContainer: {
-    gap: 10,
-    marginTop: 4,
-  },
-  barRow: {
+  triBarTrack: {
+    height: 8,
+    borderRadius: 4,
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  barLabel: {
-    fontSize: 9,
-    fontFamily: 'monospace',
-    width: 38,
-  },
-  barTrack: {
-    flex: 1,
-    height: 6,
-    backgroundColor: '#3f3f46',
-    borderRadius: 3,
-    overflow: 'visible',
-    position: 'relative',
-  },
-  baseline: {
-    position: 'absolute',
-    top: -3,
-    width: 1.5,
-    height: 12,
-    backgroundColor: '#71717a',
-    borderRadius: 1,
-  },
-  barFill: {
-    height: 6,
-    borderRadius: 3,
-    opacity: 0.85,
-  },
-  barPct: {
-    fontSize: 11,
-    fontFamily: 'monospace',
-    width: 38,
-    textAlign: 'right',
-  },
-  barDev: {
-    fontSize: 9,
-    fontFamily: 'monospace',
-    width: 28,
-    textAlign: 'right',
-  },
-  phiCard: {},
-  phiRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 10,
-  },
-  phiSymbol: {
-    fontSize: 36,
-    color: C.purple,
-    fontWeight: '300',
-    lineHeight: 40,
-  },
-  phiText: {
-    flex: 1,
-    gap: 4,
-  },
-  phiValue: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  bigPct: {
-    fontSize: 28,
-    fontWeight: '800',
-  },
-  gaugeTrack: {
-    height: 4,
-    backgroundColor: '#3f3f46',
-    borderRadius: 2,
     overflow: 'hidden',
   },
-  gaugeFill: {
-    height: 4,
-    borderRadius: 2,
+  triBarSegment: {
+    height: '100%',
+  },
+  thirdsLegendRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  legendName: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  legendValue: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  rationaleContainer: {
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 6,
+  },
+  rationaleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  rationaleIcon: {
+    fontSize: 12,
+  },
+  rationaleTitle: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+  },
+  rationaleText: {
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '400',
   },
 });

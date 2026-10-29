@@ -1,8 +1,8 @@
 // ─── StyleCard ───────────────────────────────────────────────────────────────
-// Displays a single recommended hairstyle with match badge, category pill,
-// volume tag row, and a "Simulate Try-On" CTA (placeholder — wired by Muse).
+// Bespoke editorial hairstyle recommendation card with buttery iOS spring physics.
+// Adapts reactively to Luxury Cream and Titanium Obsidian themes.
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Animated,
   Image,
@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 
 import type { HairstyleOption, StylingPrescription } from '@/types';
+import { useAppTheme } from '@/context/ThemeContext';
 
 interface StyleCardProps {
   style: HairstyleOption;
@@ -20,48 +21,17 @@ interface StyleCardProps {
   onTryOn?: (styleId: string) => void;
 }
 
-// ── Design tokens ──────────────────────────────────────────────────────────
-const C = {
-  bg: '#09090b',
-  card: '#18181b',
-  cardHover: '#1c1c1f',
-  border: '#27272a',
-  text: '#fafafa',
-  muted: '#a1a1aa',
-  cyan: '#22d3ee',
-  amber: '#f59e0b',
-  purple: '#a855f7',
-  green: '#4ade80',
-  pink: '#f472b6',
-};
-
-function matchColor(score: number): string {
-  if (score >= 90) return C.green;
-  if (score >= 75) return C.amber;
-  return C.pink;
-}
-
-function VolumeTag({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.volumeTag}>
-      <Text style={styles.tagLabel}>{label}</Text>
-      <Text style={styles.tagValue}>{value.replace('_', ' ').toUpperCase()}</Text>
-    </View>
-  );
-}
-
-// ── Component ──────────────────────────────────────────────────────────────
 export function StyleCard({ style, volumeProfile, onTryOn }: StyleCardProps) {
+  const { colors, isDark } = useAppTheme();
+  const [isSimulating, setIsSimulating] = useState(false);
   const scale = useRef(new Animated.Value(1)).current;
-  const buttonScale = useRef(new Animated.Value(1)).current;
-
-  const accentColor = matchColor(style.suitabilityScore);
+  const btnScale = useRef(new Animated.Value(1)).current;
 
   function handlePressIn() {
     Animated.spring(scale, {
-      toValue: 0.97,
+      toValue: 0.98,
       useNativeDriver: true,
-      speed: 30,
+      speed: 40,
       bounciness: 0,
     }).start();
   }
@@ -70,86 +40,123 @@ export function StyleCard({ style, volumeProfile, onTryOn }: StyleCardProps) {
     Animated.spring(scale, {
       toValue: 1,
       useNativeDriver: true,
-      speed: 20,
+      speed: 30,
     }).start();
   }
 
   function handleBtnIn() {
-    Animated.spring(buttonScale, {
+    Animated.spring(btnScale, {
       toValue: 0.95,
       useNativeDriver: true,
-      speed: 40,
+      speed: 50,
       bounciness: 0,
     }).start();
   }
 
   function handleBtnOut() {
-    Animated.spring(buttonScale, {
+    Animated.spring(btnScale, {
       toValue: 1,
       useNativeDriver: true,
-      speed: 30,
+      speed: 35,
     }).start();
   }
 
+  async function handleSimulate() {
+    setIsSimulating(true);
+    onTryOn?.(style.id);
+    setTimeout(() => {
+      setIsSimulating(false);
+    }, 1200);
+  }
+
   return (
-    <Animated.View style={[styles.card, { transform: [{ scale }], borderColor: accentColor + '33' }]}>
-      <Pressable
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        accessible={true}
-        accessibilityLabel={`${style.name} hairstyle card`}
-      >
-        {/* ── Top row: image + header ── */}
+    <Animated.View
+      style={[
+        styles.card,
+        {
+          transform: [{ scale }],
+          backgroundColor: colors.bgElevated,
+          borderColor: colors.border,
+          shadowColor: colors.cardShadow,
+        },
+      ]}
+    >
+      <Pressable onPressIn={handlePressIn} onPressOut={handlePressOut}>
+        {/* Top: Image + Header info */}
         <View style={styles.topRow}>
           <Image
             source={{ uri: style.previewUrl }}
-            style={styles.previewImage}
+            style={[styles.thumbnail, { backgroundColor: colors.bgSubtle }]}
             resizeMode="cover"
-            accessibilityLabel={`${style.name} preview`}
           />
-          <View style={styles.headerBlock}>
-            {/* Name + category pill */}
-            <View style={styles.nameLine}>
-              <Text style={styles.styleName} numberOfLines={1}>{style.name}</Text>
-            </View>
-            <View style={[styles.categoryPill, { borderColor: accentColor + '66' }]}>
-              <Text style={[styles.categoryText, { color: accentColor }]}>
-                {style.category}
+
+          <View style={styles.headerInfo}>
+            <View style={styles.titleLine}>
+              <Text style={[styles.styleName, { color: colors.text }]} numberOfLines={1}>
+                {style.name}
               </Text>
             </View>
-            {/* Match badge */}
-            <View style={[styles.matchBadge, { backgroundColor: accentColor + '20', borderColor: accentColor + '55' }]}>
-              <View style={[styles.matchDot, { backgroundColor: accentColor }]} />
-              <Text style={[styles.matchText, { color: accentColor }]}>
-                {style.suitabilityScore}% Match
-              </Text>
+
+            <View style={styles.pillsRow}>
+              <View style={[styles.categoryPill, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
+                <Text style={[styles.categoryText, { color: colors.textSecondary }]}>
+                  {style.category}
+                </Text>
+              </View>
+
+              <View style={[styles.matchBadge, { backgroundColor: colors.accentGreenLight }]}>
+                <View style={[styles.matchDot, { backgroundColor: colors.accentGreen }]} />
+                <Text style={[styles.matchText, { color: colors.accentGreen }]}>
+                  {style.suitabilityScore}% Harmony
+                </Text>
+              </View>
             </View>
+
+            <Text style={[styles.whyText, { color: colors.textSecondary }]} numberOfLines={3}>
+              {style.whyItWorks}
+            </Text>
           </View>
         </View>
 
-        {/* ── Explanation ── */}
-        <Text style={styles.whyText}>{style.whyItWorks}</Text>
-
-        {/* ── Volume profile tags ── */}
-        <View style={styles.tagRow}>
-          <VolumeTag label="CROWN" value={volumeProfile.crown} />
-          <VolumeTag label="SIDES" value={volumeProfile.lateralSides} />
-          <VolumeTag label="FOREHEAD" value={volumeProfile.foreheadCoverage} />
+        {/* Volume tags */}
+        <View style={[styles.tagBar, { backgroundColor: colors.bgSubtle }]}>
+          <View style={styles.tagItem}>
+            <Text style={[styles.tagKey, { color: colors.textMuted }]}>CROWN</Text>
+            <Text style={[styles.tagVal, { color: colors.text }]}>{volumeProfile.crown.toUpperCase()}</Text>
+          </View>
+          <View style={[styles.tagDivider, { backgroundColor: colors.border }]} />
+          <View style={styles.tagItem}>
+            <Text style={[styles.tagKey, { color: colors.textMuted }]}>TEMPLES</Text>
+            <Text style={[styles.tagVal, { color: colors.text }]}>{volumeProfile.lateralSides.toUpperCase()}</Text>
+          </View>
+          <View style={[styles.tagDivider, { backgroundColor: colors.border }]} />
+          <View style={styles.tagItem}>
+            <Text style={[styles.tagKey, { color: colors.textMuted }]}>FRINGE</Text>
+            <Text style={[styles.tagVal, { color: colors.text }]}>
+              {volumeProfile.foreheadCoverage.replace('_', ' ').toUpperCase()}
+            </Text>
+          </View>
         </View>
 
-        {/* ── Try-On CTA ── */}
-        <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+        {/* Buttery CTA Button */}
+        <Animated.View style={{ transform: [{ scale: btnScale }] }}>
           <Pressable
-            style={[styles.tryOnButton, { borderColor: accentColor + '88' }]}
+            style={[
+              styles.tryOnButton,
+              {
+                backgroundColor: isDark ? colors.accentLight : colors.bg,
+                borderColor: colors.accent,
+              },
+            ]}
             onPressIn={handleBtnIn}
             onPressOut={handleBtnOut}
-            onPress={() => onTryOn?.(style.id)}
-            accessibilityLabel="Simulate Try-On"
-            accessibilityRole="button"
+            onPress={handleSimulate}
           >
-            <Text style={[styles.tryOnIcon]}>✦</Text>
-            <Text style={[styles.tryOnText, { color: accentColor }]}>
-              Simulate Try-On
+            <Text style={[styles.tryOnIcon, { color: colors.accent }]}>
+              {isSimulating ? '◌' : '✦'}
+            </Text>
+            <Text style={[styles.tryOnText, { color: colors.accent }]}>
+              {isSimulating ? 'Simulating on Modal GPU...' : 'Simulate Try-On'}
             </Text>
           </Pressable>
         </Animated.View>
@@ -158,121 +165,121 @@ export function StyleCard({ style, volumeProfile, onTryOn }: StyleCardProps) {
   );
 }
 
-// ── Styles ─────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: C.card,
+    borderRadius: 20,
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 12,
+    padding: 16,
+    marginBottom: 14,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 10,
+    elevation: 2,
     gap: 12,
   },
   topRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 14,
     alignItems: 'flex-start',
   },
-  previewImage: {
-    width: 72,
-    height: 88,
-    borderRadius: 10,
-    backgroundColor: '#27272a',
+  thumbnail: {
+    width: 84,
+    height: 100,
+    borderRadius: 14,
   },
-  headerBlock: {
+  headerInfo: {
     flex: 1,
-    gap: 7,
+    gap: 6,
   },
-  nameLine: {
+  titleLine: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   styleName: {
     fontSize: 16,
     fontWeight: '700',
-    color: C.text,
-    flex: 1,
+    letterSpacing: -0.2,
+  },
+  pillsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
   },
   categoryPill: {
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 9,
+    paddingHorizontal: 8,
     paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
   },
   categoryText: {
     fontSize: 10,
     fontWeight: '600',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
   matchBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
     gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
   },
   matchDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
   },
   matchText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  whyText: {
     fontSize: 12,
+    lineHeight: 17,
+  },
+  tagBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderRadius: 12,
+    marginTop: 2,
+  },
+  tagItem: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  tagKey: {
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+  },
+  tagVal: {
+    fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.3,
   },
-  whyText: {
-    fontSize: 13,
-    color: C.muted,
-    lineHeight: 19,
-  },
-  tagRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  volumeTag: {
-    flex: 1,
-    backgroundColor: '#27272a',
-    borderRadius: 8,
-    paddingVertical: 7,
-    paddingHorizontal: 8,
-    alignItems: 'center',
-    gap: 3,
-  },
-  tagLabel: {
-    fontSize: 8,
-    color: C.muted,
-    fontFamily: 'monospace',
-    letterSpacing: 1,
-  },
-  tagValue: {
-    fontSize: 9,
-    color: C.text,
-    fontFamily: 'monospace',
-    fontWeight: '700',
-    textAlign: 'center',
+  tagDivider: {
+    width: 1,
+    height: 16,
   },
   tryOnButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 12,
     borderWidth: 1,
-    borderRadius: 10,
     paddingVertical: 11,
-    gap: 7,
-    backgroundColor: '#ffffff08',
+    gap: 8,
+    marginTop: 10,
   },
   tryOnIcon: {
     fontSize: 14,
-    color: '#a855f7',
   },
   tryOnText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
-    letterSpacing: 1,
+    letterSpacing: 0.8,
   },
 });
