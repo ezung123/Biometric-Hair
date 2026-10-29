@@ -23,7 +23,7 @@ import { LearnModal } from '@/components/LearnModal';
 import { LearnHairstylesModal } from '@/components/LearnHairstylesModal';
 import { AboutUsModal } from '@/components/AboutUsModal';
 import { SettingsDrawer } from '@/components/SettingsDrawer';
-import { TryOnModal, EDITORIAL_TRYON_MAP } from '@/components/TryOnModal';
+import { TryOnModal } from '@/components/TryOnModal';
 import { PRESET_SAMPLES } from '@/constants/mockData';
 import { useAppTheme } from '@/context/ThemeContext';
 import { analyzeFacialGeometryWithMuse } from '@/services/basetenService';

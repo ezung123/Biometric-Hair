@@ -24,6 +24,13 @@ interface TryOnModalProps {
   haircutAsset?: any;
 }
 
+export const HAIRCUT_ASSET_MAP: Record<string, any> = {
+  'curtain-fringe': require('@/assets/images/hair_curtain_fringe.png'),
+  'textured-crop': require('@/assets/images/hair_textured_crop.png'),
+  'classic-quiff': require('@/assets/images/hair_classic_quiff.png'),
+  'taper-fade': require('@/assets/images/hair_taper_fade.png'),
+};
+
 export const EDITORIAL_TRYON_MAP: Record<string, any> = {
   'curtain-fringe': require('@/assets/images/tryon_curtain_fringe.jpg'),
   'textured-crop': require('@/assets/images/tryon_textured_crop.jpg'),
