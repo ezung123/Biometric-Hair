@@ -49,7 +49,7 @@ export function BiometricOverlay({ visible, metrics }: BiometricOverlayProps) {
   const dotColor = isDark ? '#F5D77F' : '#A06E3B';
 
   return (
-    <Svg style={StyleSheet.absoluteFill} width={width} height={height}>
+    <Svg style={StyleSheet.absoluteFill} width={width} height={height} pointerEvents="none">
       <Defs>
         <LinearGradient id="goldGrad" x1="0" y1="0" x2="1" y2="0">
           <Stop offset="0%" stopColor={lineColor} stopOpacity="0.2" />

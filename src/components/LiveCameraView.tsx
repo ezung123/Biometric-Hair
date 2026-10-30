@@ -278,9 +278,11 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
         if (count > 80 && maxX > minX) {
           const rawCenterX = sumX / count;
           const mirroredPctX = 100 - (rawCenterX / canvas.width) * 100;
-          const hairlinePctY = (topY / canvas.height) * 100;
+          // Position anchor right at top of head / trichion line
+          const hairlinePctY = Math.max(12, ((topY - 4) / canvas.height) * 100);
           const headWidth = maxX - minX;
-          const dynamicScale = Math.min(1.4, Math.max(0.7, headWidth / 36.0));
+          // Scale proportional to head width
+          const dynamicScale = Math.min(1.25, Math.max(0.65, headWidth / 42.0));
 
           setHeadPose((prev) => ({
             x: prev.x * 0.72 + mirroredPctX * 0.28,
@@ -355,8 +357,8 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
               height: '100%',
               objectFit: 'cover',
               transform: 'scaleX(-1)', // Mirror front camera like Snapchat
-              zIndex: frozenImageUri ? 1 : 2,
-              display: frozenImageUri ? 'none' : 'block',
+              zIndex: 2,
+              display: (frozenImageUri || !hasCameraStream) ? 'none' : 'block',
               backgroundColor: '#000000',
             }}
           />
@@ -415,11 +417,11 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
               {
                 left: `${headPose.x}%`,
                 top: `${headPose.y}%`,
-                width: 320 * headPose.scale,
-                height: 300 * headPose.scale,
+                width: 280 * headPose.scale,
+                height: 270 * headPose.scale,
                 transform: [
-                  { translateX: -160 * headPose.scale },
-                  { translateY: -180 * headPose.scale },
+                  { translateX: -140 * headPose.scale },
+                  { translateY: -195 * headPose.scale },
                 ],
               },
             ]}
@@ -434,7 +436,9 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
         )}
 
         {/* ── 4. AR Neoclassical Reticle Overlay (Clean Golden Ratio Oval) ── */}
-        <BiometricOverlay visible={hudVisible} metrics={metrics} />
+        <View style={styles.overlayWrapper} pointerEvents="none">
+          <BiometricOverlay visible={hudVisible} metrics={metrics} />
+        </View>
 
         {/* ── 5. Status Pill ── */}
         <View style={styles.reticleBadgeWrapper}>
@@ -547,6 +551,10 @@ const styles = StyleSheet.create({
     color: '#A8A29E',
     fontSize: 11,
     marginTop: 4,
+  },
+  overlayWrapper: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 6,
   },
   arWigAnchor: {
     position: 'absolute',
