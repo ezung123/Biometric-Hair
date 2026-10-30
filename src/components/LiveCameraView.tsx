@@ -53,16 +53,23 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
     const [hasCameraStream, setHasCameraStream] = useState(false);
     const [cameraPermissionError, setCameraPermissionError] = useState(false);
 
-    // Dynamic Head Pose tracking (moves with user like Snapchat)
+    // Dynamic Head Pose tracking & hair physics (moves & sways naturally with user like Snapchat)
     const [headPose, setHeadPose] = useState<{
       x: number;
       y: number;
       scale: number;
+      rotationDeg: number;
+      swayX: number;
     }>({
       x: 50,
       y: 28,
       scale: 1.0,
+      rotationDeg: 0,
+      swayX: 0,
     });
+
+    const lastPoseRef = useRef<{ x: number; y: number; time: number }>({ x: 50, y: 28, time: Date.now() });
+    const hairPhysicsVelocity = useRef<number>(0);
 
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
@@ -274,7 +281,7 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
           }
         }
 
-        // Smoothly interpolate tracking updates
+        // Smoothly interpolate tracking updates & compute hair wave physics
         if (count > 80 && maxX > minX) {
           const rawCenterX = sumX / count;
           const mirroredPctX = 100 - (rawCenterX / canvas.width) * 100;
@@ -284,10 +291,32 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
           // Scale proportional to head width
           const dynamicScale = Math.min(1.25, Math.max(0.65, headWidth / 42.0));
 
+          // ── Hair Wave & Inertia Physics (Snapchat-style spring-damper sway) ──
+          const now = Date.now();
+          const dt = Math.max(0.016, (now - lastPoseRef.current.time) / 1000);
+          const dx = mirroredPctX - lastPoseRef.current.x;
+          lastPoseRef.current = { x: mirroredPctX, y: hairlinePctY, time: now };
+
+          // Instantaneous head horizontal velocity
+          const headVelocityX = dx / dt; // % per second
+
+          // Spring-damper integration: hair lags behind head turn, then sways back
+          const springK = 35.0; // Spring stiffness
+          const dampingC = 6.5; // Viscous damping
+          const targetSway = -Math.max(-25, Math.min(25, headVelocityX * 0.18)); // Drag opposite to movement
+
+          hairPhysicsVelocity.current += (springK * (targetSway - (headPose.swayX || 0)) - dampingC * hairPhysicsVelocity.current) * dt;
+          const nextSwayX = (headPose.swayX || 0) + hairPhysicsVelocity.current * dt;
+
+          // Head tilt angle approximation based on head movement velocity
+          const targetRotation = Math.max(-12, Math.min(12, headVelocityX * 0.08));
+
           setHeadPose((prev) => ({
             x: prev.x * 0.72 + mirroredPctX * 0.28,
             y: prev.y * 0.72 + hairlinePctY * 0.28,
             scale: prev.scale * 0.75 + dynamicScale * 0.25,
+            rotationDeg: prev.rotationDeg * 0.75 + targetRotation * 0.25,
+            swayX: Math.max(-18, Math.min(18, nextSwayX)),
           }));
         }
       }, 35); // ~30 FPS tracking update rate
@@ -409,7 +438,7 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
           </View>
         ) : null}
 
-        {/* ── 3. AR Head-Tracking Hairstyle Wig (Moves with user like Snapchat) ── */}
+        {/* ── 3. AR Head-Tracking Hairstyle Wig with Hair Wave Physics ── */}
         {showAugmentation && augmentedHairAsset && hasCameraStream && cameraEnabled && !frozenImageUri && (
           <View
             style={[
@@ -420,8 +449,9 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
                 width: 280 * headPose.scale,
                 height: 270 * headPose.scale,
                 transform: [
-                  { translateX: -140 * headPose.scale },
+                  { translateX: (-140 + (headPose.swayX || 0)) * headPose.scale },
                   { translateY: -195 * headPose.scale },
+                  { rotate: `${headPose.rotationDeg || 0}deg` },
                 ],
               },
             ]}

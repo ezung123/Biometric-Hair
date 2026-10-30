@@ -30,13 +30,14 @@ export const HAIRCUT_ASSET_MAP: Record<string, any> = {
   'textured-crop': require('@/assets/images/hair_textured_crop.png'),
   'classic-quiff': require('@/assets/images/hair_classic_quiff.png'),
   'taper-fade': require('@/assets/images/hair_taper_fade.png'),
+  'buzz-cut': require('@/assets/images/hair_buzz_cut.png'),
+  'layered-waves': require('@/assets/images/hair_layered_waves.png'),
+  'french-bob': require('@/assets/images/hair_french_bob.png'),
+  'sleek-pixie': require('@/assets/images/hair_sleek_pixie.png'),
 };
 
 export const EDITORIAL_TRYON_MAP: Record<string, any> = {
-  'curtain-fringe': require('@/assets/images/hair_curtain_fringe.png'),
-  'textured-crop': require('@/assets/images/hair_textured_crop.png'),
-  'classic-quiff': require('@/assets/images/hair_classic_quiff.png'),
-  'taper-fade': require('@/assets/images/hair_taper_fade.png'),
+  ...HAIRCUT_ASSET_MAP,
 };
 
 export function TryOnModal({
@@ -56,7 +57,15 @@ export function TryOnModal({
   // Resolve active transparent haircut asset
   const hairAsset =
     HAIRCUT_ASSET_MAP[styleOption.id] ||
-    (styleOption.name.toLowerCase().includes('quiff')
+    (styleOption.name.toLowerCase().includes('wave')
+      ? HAIRCUT_ASSET_MAP['layered-waves']
+      : styleOption.name.toLowerCase().includes('bob')
+      ? HAIRCUT_ASSET_MAP['french-bob']
+      : styleOption.name.toLowerCase().includes('pixie')
+      ? HAIRCUT_ASSET_MAP['sleek-pixie']
+      : styleOption.name.toLowerCase().includes('buzz')
+      ? HAIRCUT_ASSET_MAP['buzz-cut']
+      : styleOption.name.toLowerCase().includes('quiff')
       ? HAIRCUT_ASSET_MAP['classic-quiff']
       : styleOption.name.toLowerCase().includes('crop')
       ? HAIRCUT_ASSET_MAP['textured-crop']

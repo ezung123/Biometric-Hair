@@ -29,21 +29,24 @@ import { useAppTheme } from '@/context/ThemeContext';
 import { analyzeFacialGeometryWithMuse } from '@/services/basetenService';
 import type { FacialMetrics, HairstyleOption, StylingPrescription } from '@/types';
 
-// Curated isolated hairstyle lenses — 1-2 words, clean thumbnail
+// Curated isolated hairstyle lenses for both Men and Women
 interface HairstyleLensItem {
   id: string;
   name: string; // One or two words
   thumbnail: any;
   category: string;
+  gender: 'all' | 'men' | 'women';
   targetMorphology: string;
 }
 
 const HAIRSTYLE_LENSES: HairstyleLensItem[] = [
+  // Men's Styles
   {
     id: 'curtain-fringe',
     name: 'Curtain Fringe',
     thumbnail: require('@/assets/images/hair_curtain_fringe.png'),
     category: 'Fringe',
+    gender: 'men',
     targetMorphology: 'Oblong',
   },
   {
@@ -51,6 +54,7 @@ const HAIRSTYLE_LENSES: HairstyleLensItem[] = [
     name: 'Textured Crop',
     thumbnail: require('@/assets/images/hair_textured_crop.png'),
     category: 'Crop',
+    gender: 'men',
     targetMorphology: 'Oval',
   },
   {
@@ -58,6 +62,7 @@ const HAIRSTYLE_LENSES: HairstyleLensItem[] = [
     name: 'Classic Quiff',
     thumbnail: require('@/assets/images/hair_classic_quiff.png'),
     category: 'Quiff',
+    gender: 'men',
     targetMorphology: 'Round',
   },
   {
@@ -65,6 +70,40 @@ const HAIRSTYLE_LENSES: HairstyleLensItem[] = [
     name: 'Taper Fade',
     thumbnail: require('@/assets/images/hair_taper_fade.png'),
     category: 'Fade',
+    gender: 'men',
+    targetMorphology: 'Square',
+  },
+  {
+    id: 'buzz-cut',
+    name: 'Buzz Fade',
+    thumbnail: require('@/assets/images/hair_buzz_cut.png'),
+    category: 'Fade',
+    gender: 'men',
+    targetMorphology: 'Round',
+  },
+  // Women's Styles
+  {
+    id: 'layered-waves',
+    name: 'Layered Waves',
+    thumbnail: require('@/assets/images/hair_layered_waves.png'),
+    category: 'Waves',
+    gender: 'women',
+    targetMorphology: 'Oblong',
+  },
+  {
+    id: 'french-bob',
+    name: 'French Bob',
+    thumbnail: require('@/assets/images/hair_french_bob.png'),
+    category: 'Bob',
+    gender: 'women',
+    targetMorphology: 'Oval',
+  },
+  {
+    id: 'sleek-pixie',
+    name: 'Sleek Pixie',
+    thumbnail: require('@/assets/images/hair_sleek_pixie.png'),
+    category: 'Pixie',
+    gender: 'women',
     targetMorphology: 'Square',
   },
 ];
@@ -98,6 +137,12 @@ export default function HomeScreen() {
   const metrics: FacialMetrics = activePreset.metrics;
   const [currentPrescription, setCurrentPrescription] = useState<StylingPrescription>(
     activePreset.prescription
+  );
+
+  const [genderFilter, setGenderFilter] = useState<'all' | 'men' | 'women'>('all');
+
+  const visibleLenses = HAIRSTYLE_LENSES.filter(
+    (l) => genderFilter === 'all' || l.gender === genderFilter
   );
 
   const activeLens = HAIRSTYLE_LENSES.find((l) => l.id === activeLensId) || HAIRSTYLE_LENSES[0];
@@ -366,6 +411,38 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
+        {/* Gender Filter Segment Control (All, Men, Women) */}
+        <View style={styles.genderSelectorRow}>
+          {(['all', 'men', 'women'] as const).map((genderOption) => {
+            const isSelected = genderFilter === genderOption;
+            return (
+              <Pressable
+                key={genderOption}
+                onPress={() => {
+                  setGenderFilter(genderOption);
+                  const firstMatching = HAIRSTYLE_LENSES.find(
+                    (l) => genderOption === 'all' || l.gender === genderOption
+                  );
+                  if (firstMatching) setActiveLensId(firstMatching.id);
+                }}
+                style={[
+                  styles.genderPill,
+                  isSelected && styles.genderPillActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.genderPillText,
+                    isSelected && styles.genderPillTextActive,
+                  ]}
+                >
+                  {genderOption === 'all' ? 'All Styles' : genderOption === 'men' ? 'Men' : 'Women'}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
         {/* ── 4. Clean Isolated Hairstyle Lenses (Pristine Circle Carousels) ── */}
         <View style={styles.lensCarouselDeck}>
           <ScrollView
@@ -373,7 +450,7 @@ export default function HomeScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.lensScroll}
           >
-            {HAIRSTYLE_LENSES.map((lens) => {
+            {visibleLenses.map((lens) => {
               const isSelected = lens.id === activeLensId;
               return (
                 <Pressable
@@ -559,6 +636,35 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.15)',
     marginBottom: 10,
     gap: 3,
+  },
+  genderSelectorRow: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(20, 20, 20, 0.75)',
+    padding: 2,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    marginBottom: 8,
+    gap: 2,
+  },
+  genderPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 14,
+  },
+  genderPillActive: {
+    backgroundColor: 'rgba(212, 175, 55, 0.25)',
+    borderWidth: 1,
+    borderColor: '#D4AF37',
+  },
+  genderPillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#8E8E93',
+  },
+  genderPillTextActive: {
+    color: '#D4AF37',
+    fontWeight: '700',
   },
   shapePill: {
     paddingHorizontal: 14,
