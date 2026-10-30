@@ -276,7 +276,7 @@ export default function HomeScreen() {
       />
 
       {/* ── 2. Top Controls (Pristine iOS Native Aesthetic) ── */}
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <SafeAreaView style={styles.safeArea} edges={['top']} pointerEvents="box-none">
         <View style={styles.topControlBar}>
           {/* Hamburger Menu (Standard iOS Navigation) */}
           <Pressable
@@ -335,7 +335,7 @@ export default function HomeScreen() {
 
         {/* Live Status Toast */}
         {analysisStatus && (
-          <View style={styles.statusToastWrapper}>
+          <View style={styles.statusToastWrapper} pointerEvents="none">
             <View style={[styles.statusToast, { backgroundColor: colors.bgElevated, borderColor: colors.accent }]}>
               {isAnalyzing && <ActivityIndicator size="small" color={colors.accent} style={{ marginRight: 8 }} />}
               <Text style={[styles.statusToastText, { color: colors.text }]}>{analysisStatus}</Text>
@@ -345,7 +345,7 @@ export default function HomeScreen() {
       </SafeAreaView>
 
       {/* ── 3. Bottom Controls: Face Selector, Shutter & Hairstyle Lenses ── */}
-      <View style={styles.bottomSheetContainer}>
+      <View style={styles.bottomSheetContainer} pointerEvents="box-none">
         {/* Retake Live Camera Pill (if photo was snapped) */}
         {capturedPhotoUri && (
           <Pressable onPress={handleRetake} style={styles.retakeFloatingPill}>
@@ -541,7 +541,8 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    zIndex: 30,
+    zIndex: 50,
+    pointerEvents: 'box-none',
   },
   topControlBar: {
     flexDirection: 'row',
@@ -608,7 +609,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    zIndex: 25,
+    zIndex: 50,
+    pointerEvents: 'box-none',
     alignItems: 'center',
     paddingBottom: Platform.OS === 'ios' ? 24 : 14,
   },

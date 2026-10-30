@@ -206,13 +206,31 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
               // Mirrored video horizontally
               const faceCenterX = box.x + box.width / 2;
               const mirroredPctX = 100 - (faceCenterX / videoW) * 100;
-              const hairlinePctY = (box.y / videoH) * 100;
-              const scale = Math.min(1.4, Math.max(0.7, box.width / (videoW * 0.35)));
+              // Anchor right at upper forehead/hairline
+              const hairlinePctY = Math.max(12, (box.y / videoH) * 100);
+              const scale = Math.min(1.25, Math.max(0.65, box.width / (videoW * 0.32)));
+
+              // ── Hair Wave & Inertia Physics (Snapchat-style spring-damper sway) ──
+              const now = Date.now();
+              const dt = Math.max(0.016, (now - lastPoseRef.current.time) / 1000);
+              const dx = mirroredPctX - lastPoseRef.current.x;
+              lastPoseRef.current = { x: mirroredPctX, y: hairlinePctY, time: now };
+
+              const headVelocityX = dx / dt; // % per second
+              const springK = 35.0;
+              const dampingC = 6.5;
+              const targetSway = -Math.max(-25, Math.min(25, headVelocityX * 0.18));
+
+              hairPhysicsVelocity.current += (springK * (targetSway - (headPose.swayX || 0)) - dampingC * hairPhysicsVelocity.current) * dt;
+              const nextSwayX = (headPose.swayX || 0) + hairPhysicsVelocity.current * dt;
+              const targetRotation = Math.max(-12, Math.min(12, headVelocityX * 0.08));
 
               setHeadPose((prev) => ({
                 x: prev.x * 0.70 + mirroredPctX * 0.30,
                 y: prev.y * 0.70 + hairlinePctY * 0.30,
                 scale: prev.scale * 0.70 + scale * 0.30,
+                rotationDeg: prev.rotationDeg * 0.75 + targetRotation * 0.25,
+                swayX: Math.max(-18, Math.min(18, nextSwayX)),
               }));
               return;
             }
@@ -471,7 +489,7 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
         </View>
 
         {/* ── 5. Status Pill ── */}
-        <View style={styles.reticleBadgeWrapper}>
+        <View style={styles.reticleBadgeWrapper} pointerEvents="none">
           <View
             style={[
               styles.reticleBadge,
