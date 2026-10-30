@@ -284,6 +284,9 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingHorizontal: 20,
     paddingBottom: 24,
+    width: '100%',
+    maxWidth: 540,
+    alignSelf: 'center',
   },
   handle: {
     width: 40,
@@ -343,7 +346,7 @@ const styles = StyleSheet.create({
   },
   previewContainer: {
     width: '100%',
-    height: 310,
+    height: 380,
     borderRadius: 18,
     overflow: 'hidden',
     position: 'relative',
@@ -356,10 +359,10 @@ const styles = StyleSheet.create({
   },
   hairOverlayWrapper: {
     position: 'absolute',
-    top: '3%',
+    top: '4%',
     alignSelf: 'center',
-    width: 280,
-    height: 260,
+    width: 290,
+    height: 280,
     zIndex: 5,
     justifyContent: 'center',
     alignItems: 'center',
