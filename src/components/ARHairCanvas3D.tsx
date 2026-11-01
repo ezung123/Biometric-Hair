@@ -23,79 +23,79 @@ export interface StyleCalibration {
 
 export const STYLE_CALIBRATION: Record<string, StyleCalibration> = {
   'taper-fade': {
-    yOffsetFactor: 0.12,
+    yOffsetFactor: 0.05,
     scaleFactor: 1.02,
     zOffset: 12,
     curvatureDepth: 68,
     hasFlanks: false,
   },
   'buzz-cut': {
-    yOffsetFactor: 0.10,
+    yOffsetFactor: 0.04,
     scaleFactor: 0.98,
     zOffset: 8,
     curvatureDepth: 62,
     hasFlanks: false,
   },
   'textured-crop': {
-    yOffsetFactor: 0.16,
+    yOffsetFactor: 0.05,
     scaleFactor: 1.02,
-    zOffset: 14,
+    zOffset: 12,
     curvatureDepth: 68,
     hasFlanks: false,
   },
   'classic-quiff': {
-    yOffsetFactor: 0.18,
+    yOffsetFactor: 0.08,
     scaleFactor: 1.04,
-    zOffset: 16,
+    zOffset: 14,
     curvatureDepth: 72,
     hasFlanks: false,
   },
   'curtain-fringe': {
-    yOffsetFactor: 0.22,
-    scaleFactor: 1.06,
-    zOffset: 16,
+    yOffsetFactor: 0.07,
+    scaleFactor: 1.04,
+    zOffset: 14,
     curvatureDepth: 74,
     hasFlanks: false,
   },
   'layered-waves': {
-    yOffsetFactor: 0.24,
-    scaleFactor: 1.08,
-    zOffset: 18,
+    yOffsetFactor: 0.09,
+    scaleFactor: 1.06,
+    zOffset: 16,
     curvatureDepth: 78,
     hasFlanks: false,
   },
   'french-bob': {
-    yOffsetFactor: 0.14,
+    yOffsetFactor: 0.05,
     scaleFactor: 1.04,
-    zOffset: 14,
+    zOffset: 12,
     curvatureDepth: 70,
     hasFlanks: false,
   },
   'sleek-pixie': {
-    yOffsetFactor: 0.16,
+    yOffsetFactor: 0.05,
     scaleFactor: 1.02,
-    zOffset: 14,
+    zOffset: 12,
     curvatureDepth: 68,
     hasFlanks: false,
   },
   'afro-taper': {
-    yOffsetFactor: 0.22,
+    yOffsetFactor: 0.08,
     scaleFactor: 1.10,
-    zOffset: 18,
+    zOffset: 16,
     curvatureDepth: 80,
     hasFlanks: false,
   },
   'curly-fringe': {
-    yOffsetFactor: 0.18,
-    scaleFactor: 1.06,
-    zOffset: 16,
+    yOffsetFactor: 0.06,
+    scaleFactor: 1.04,
+    zOffset: 14,
     curvatureDepth: 74,
     hasFlanks: false,
   },
   'box-braids': {
-    yOffsetFactor: 0.14,
+    yOffsetFactor: 0.06,
     scaleFactor: 1.08,
-    zOffset: 16,
+    zOffset: 14,
     curvatureDepth: 84,
     hasFlanks: true,
   },
@@ -251,18 +251,19 @@ export function ARHairCanvas3D({
     const visibleHeight = 2 * Math.tan(vFOV / 2) * distance;
     const visibleWidth = visibleHeight * camera.aspect;
 
-    // 1. Anatomical Scale Factor derived accurately from viewport & detected skull
+    // 1. Dynamic Skull Width Normalization
+    // Derived directly from detected bitemporal/bizygomatic distance (Landmarks 127 & 356)
     const canvasEl = canvasRef.current;
     const canvasW = canvasEl ? (canvasEl.clientWidth || window.innerWidth) : 400;
-    const skullFraction = Math.max(0.28, Math.min(0.55, skullWidthPx / canvasW));
-    // In Three.js world units, target hair width should be 116% of skull span
-    const target3DHairWidth = visibleWidth * skullFraction * 1.16;
+    const normalizedSkullSpan = Math.max(0.24, Math.min(0.58, skullWidthPx / canvasW));
+    // In Three.js world units, target hair width wraps 118% of the bitemporal cranial span
+    const target3DHairWidth = visibleWidth * normalizedSkullSpan * 1.18;
     const baseScale = target3DHairWidth / 245.0; // 245 is base geometry width
-    const finalScale = Math.max(0.25, Math.min(0.65, baseScale)) * calib.scaleFactor;
+    const finalScale = Math.max(0.28, Math.min(0.62, baseScale)) * calib.scaleFactor;
 
-    // 2. Precise 3D Cranial Anchor (Hairline alignment)
+    // 2. Precise 3D Cranial Anchor (Anchored directly to Landmark 10 / Trichion hairline)
     const targetX = ((centerPctX - 50) / 100) * visibleWidth + (swayX * 0.35);
-    const targetY = -((hairlinePctY - 50) / 100) * visibleHeight + (220.0 * finalScale * (calib.yOffsetFactor || 0.18));
+    const targetY = -((hairlinePctY - 50) / 100) * visibleHeight;
     const targetZ = depthZ * 0.5;
 
     headGroup.position.set(targetX, targetY, targetZ);
@@ -286,7 +287,8 @@ export function ARHairCanvas3D({
 
     const calib = STYLE_CALIBRATION[activeStyleId] || STYLE_CALIBRATION['classic-quiff'];
     const hairHeight = 240;
-    const yOffset = calib.yOffsetFactor * hairHeight;
+    // Align base root line snug to the Trichion hairline origin without floating
+    const yOffset = (hairHeight * 0.28) - ((calib.yOffsetFactor || 0.05) * hairHeight);
 
     // Radial offsets for the 4 concentric shells
     const layerOffsets = [0, 8, 16, 25];
@@ -402,7 +404,19 @@ export function ARHairCanvas3D({
     scene.add(headGroup);
     headGroupRef.current = headGroup;
 
-    
+    // 4. Invisible 3D Anatomical Head & Face Occluder
+    // Uses colorWrite: false and depthWrite: true so it is 100% invisible
+    // but populates the Z-buffer so hair strands drape behind the ear/jaw correctly!
+    const occluderGeo = new THREE.SphereGeometry(95, 32, 24);
+    occluderGeo.scale(1.05, 1.28, 1.10);
+    const occluderMat = new THREE.MeshBasicMaterial({
+      colorWrite: false,
+      depthWrite: true,
+    });
+    const occluderMesh = new THREE.Mesh(occluderGeo, occluderMat);
+    occluderMesh.position.set(0, -65, -30);
+    occluderMesh.renderOrder = -1; // Render before hair shells
+    headGroup.add(occluderMesh);
 
     // 5. 3D Volumetric Hairstyle Root Group
     const volumetricHairGroup = new THREE.Group();
@@ -416,7 +430,7 @@ export function ARHairCanvas3D({
     const hairWidth = 245;
     const hairHeight = 240;
     const calib = STYLE_CALIBRATION[activeStyleId] || STYLE_CALIBRATION['classic-quiff'];
-    const initialYOffset = calib.yOffsetFactor * hairHeight;
+    const initialYOffset = (hairHeight * 0.28) - ((calib.yOffsetFactor || 0.05) * hairHeight);
 
     // Parametric 3D Cranial Shell Geometry Generator
     // Continuous 54x54 vertex grid wrapping 3D coronal & sagittal depth
