@@ -37,10 +37,10 @@ export const STYLE_CALIBRATION: Record<string, StyleCalibration> = {
     hasFlanks: false,
   },
   'textured-crop': {
-    yOffsetFactor: 0.05,
-    scaleFactor: 1.02,
+    yOffsetFactor: 0.08,
+    scaleFactor: 1.08,
     zOffset: 12,
-    curvatureDepth: 68,
+    curvatureDepth: 74,
     hasFlanks: false,
   },
   'classic-quiff': {
@@ -179,8 +179,8 @@ function generateHairNormalMap(image: HTMLImageElement): THREE.CanvasTexture {
       const up    = (src[((y - 1) * w + x) * 4] * 0.299 + src[((y - 1) * w + x) * 4 + 1] * 0.587 + src[((y - 1) * w + x) * 4 + 2] * 0.114);
       const down  = (src[((y + 1) * w + x) * 4] * 0.299 + src[((y + 1) * w + x) * 4 + 1] * 0.587 + src[((y + 1) * w + x) * 4 + 2] * 0.114);
 
-      const dx = ((right - left) / 255.0) * 3.5;
-      const dy = ((down - up) / 255.0) * 3.5;
+      const dx = ((right - left) / 255.0) * 1.0;
+      const dy = ((down - up) / 255.0) * 1.0;
       const dz = 1.0;
       const len = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1.0;
 
@@ -304,7 +304,7 @@ export function updateHairMeshTransform(
 
   // 2. Dynamic Anatomical Scale
   const currentHeadWidth = pScreenRight.distanceTo(pScreenLeft);
-  const refSpan = 150.0; // Calibrated bitemporal reference span for full lateral cranial coverage
+  const refSpan = 118.0; // Calibrated bitemporal reference span for full lateral cranial coverage
   const calibScale = calib?.scaleFactor ?? 1.0;
   const scale = Math.max(0.40, Math.min(2.50, (currentHeadWidth / refSpan) * calibScale));
 
@@ -435,7 +435,7 @@ export function ARHairCanvas3D({
     if (hairMeshesRef.current.length === 0 || !volumetricHairGroupRef.current) return;
 
     const calib = STYLE_CALIBRATION[activeStyleId] || STYLE_CALIBRATION['classic-quiff'];
-    const layerOffsets = [0, 8, 16, 25];
+    const layerOffsets = [0, 8, 16, 24];
 
     hairMeshesRef.current.forEach((mesh, idx) => {
       const zLayer = layerOffsets[idx] || 0;
@@ -481,7 +481,7 @@ export function ARHairCanvas3D({
         mat.map = texture;
         if (normalMap && (idx === 2 || idx === 3 || idx >= 4)) {
           mat.normalMap = normalMap;
-          mat.normalScale = new THREE.Vector2(2.2, 2.2);
+          mat.normalScale = new THREE.Vector2(0.55, 0.55);
         }
         mat.needsUpdate = true;
       });
@@ -531,19 +531,20 @@ export function ARHairCanvas3D({
     rendererRef.current = renderer;
 
     // 2. Realistic 3D Studio Three-Point Directional Lighting
-    const ambientLight = new THREE.AmbientLight(0xfff8ee, 1.15);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.30);
     scene.add(ambientLight);
 
-    const keyLight = new THREE.DirectionalLight(0xffffff, 1.65);
-    keyLight.position.set(160, 300, 260);
+    const keyLight = new THREE.DirectionalLight(0xfff8ee, 1.30);
+    keyLight.position.set(120, 240, 200);
     scene.add(keyLight);
 
-    const rimLight = new THREE.DirectionalLight(0xf5d77f, 1.85);
-    rimLight.position.set(-190, 240, -140);
+    // Soft neutral daylight hair backlight (replaces harsh gold rim light to eliminate yellow glitter)
+    const rimLight = new THREE.DirectionalLight(0xffeedb, 0.55);
+    rimLight.position.set(0, 260, -120);
     scene.add(rimLight);
 
-    const fillLight = new THREE.DirectionalLight(0xb8d8ff, 0.45);
-    fillLight.position.set(-110, -50, 160);
+    const fillLight = new THREE.DirectionalLight(0xe8f0ff, 0.55);
+    fillLight.position.set(-140, 60, 160);
     scene.add(fillLight);
 
     // 3. 3D Cranial Root Group
@@ -560,14 +561,17 @@ export function ARHairCanvas3D({
     const geometries: THREE.BufferGeometry[] = [];
     const meshes: THREE.Mesh[] = [];
 
-    const hairWidth = 265;
-    const hairHeight = 240;
+    // Expanded lateral and vertical cranial coverage: covers natural hair from ear to ear
+    const hairWidth = 345;
+    const hairHeight = 300;
     const calib = STYLE_CALIBRATION[activeStyleId] || STYLE_CALIBRATION['classic-quiff'];
 
     // Parametric 3D Cranial Shell Geometry Generator
-    // Continuous 54x54 vertex grid wrapping 3D coronal & sagittal depth
-    const createCurvedCranialGeometry = (curvatureDepth = 70, radialExpansion = 0) => {
-      const geo = new THREE.PlaneGeometry(hairWidth + radialExpansion * 1.2, hairHeight + radialExpansion * 0.8, 54, 54);
+    // Continuous 60x60 vertex grid with deep coronal wrap around skull flanks
+    const createCurvedCranialGeometry = (curvatureDepth = 75, radialExpansion = 0) => {
+      const w = hairWidth + radialExpansion * 1.3;
+      const h = hairHeight + radialExpansion * 0.9;
+      const geo = new THREE.PlaneGeometry(w, h, 60, 60);
       const pos = geo.attributes.position;
 
       for (let i = 0; i < pos.count; i++) {
@@ -575,10 +579,12 @@ export function ARHairCanvas3D({
         const v = pos.getY(i) / (hairHeight / 2); // -1 to +1
 
         // Spheroid cranial curvature:
-        // - Coronal curvature: sweeps backward around temples into -Z
+        // - Coronal curvature: sweeps backwards around temples and ears into -Z
         // - Sagittal curvature: arches over top of cranium into -Z
-        const zCurvature = -Math.pow(u, 2) * (curvatureDepth * 0.62) - (v > 0 ? Math.pow(v, 1.6) * (curvatureDepth * 0.45) : 0);
-        pos.setZ(i, zCurvature + radialExpansion);
+        const lateralFactor = Math.pow(Math.abs(u), 2.2);
+        const coronalWrap = -lateralFactor * (curvatureDepth * 0.75);
+        const sagittalArch = v > 0 ? -Math.pow(v, 1.8) * (curvatureDepth * 0.50) : 0;
+        pos.setZ(i, coronalWrap + sagittalArch + radialExpansion);
       }
       geo.computeVertexNormals();
       geometries.push(geo);
@@ -590,14 +596,14 @@ export function ARHairCanvas3D({
     // -------------------------------------------------------------------------
 
     // Shell 0: Scalp Foundation & Deep Root Density (Dark root tint, high opacity)
-    const shell0Geo = createCurvedCranialGeometry(65, 0);
+    const shell0Geo = createCurvedCranialGeometry(70, 0);
     const shell0Mat = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(0x201813),
+      color: new THREE.Color(0x181412),
       roughness: 0.85,
-      metalness: 0.05,
+      metalness: 0.0,
       transparent: true,
-      opacity: 0.96,
-      alphaTest: 0.04,
+      opacity: 0.98,
+      alphaTest: 0.005,
       side: THREE.DoubleSide,
       depthTest: true,
       depthWrite: true,
@@ -609,17 +615,18 @@ export function ARHairCanvas3D({
     volumetricHairGroup.add(shell0Mesh);
     meshes.push(shell0Mesh);
 
-    // Shell 1: Deep Volumetric Mass (+8mm radial expansion)
-    const shell1Geo = createCurvedCranialGeometry(68, 8);
+    // Shell 1: Deep Volumetric Mass (+8mm radial expansion, smooth blending)
+    const shell1Geo = createCurvedCranialGeometry(74, 8);
     const shell1Mat = new THREE.MeshStandardMaterial({
-      roughness: 0.55,
-      metalness: 0.12,
+      roughness: 0.65,
+      metalness: 0.0,
       transparent: true,
       opacity: 0.88,
-      alphaTest: 0.04,
+      alphaTest: 0.001,
       side: THREE.DoubleSide,
       depthTest: true,
-      depthWrite: true,
+      depthWrite: false,
+      blending: THREE.NormalBlending,
     });
     materials.push(shell1Mat);
     const shell1Mesh = new THREE.Mesh(shell1Geo, shell1Mat);
@@ -629,16 +636,17 @@ export function ARHairCanvas3D({
     meshes.push(shell1Mesh);
 
     // Shell 2: Primary Mid-Volume Strata (+16mm radial expansion, normal-mapped)
-    const shell2Geo = createCurvedCranialGeometry(72, 16);
+    const shell2Geo = createCurvedCranialGeometry(78, 16);
     const shell2Mat = new THREE.MeshStandardMaterial({
-      roughness: 0.38,
-      metalness: 0.18,
+      roughness: 0.52,
+      metalness: 0.0,
       transparent: true,
-      opacity: 0.94,
-      alphaTest: 0.04,
+      opacity: 0.92,
+      alphaTest: 0.001,
       side: THREE.DoubleSide,
       depthTest: true,
-      depthWrite: true,
+      depthWrite: false,
+      blending: THREE.NormalBlending,
     });
     materials.push(shell2Mat);
     const shell2Mesh = new THREE.Mesh(shell2Geo, shell2Mat);
@@ -647,21 +655,22 @@ export function ARHairCanvas3D({
     volumetricHairGroup.add(shell2Mesh);
     meshes.push(shell2Mesh);
 
-    // Shell 3: Outer Mantle & Flyaway Silhouette (+25mm radial expansion, specular highlights)
-    const shell3Geo = createCurvedCranialGeometry(76, 25);
+    // Shell 3: Outer Mantle & Flyaway Silhouette (+24mm radial expansion, soft specular)
+    const shell3Geo = createCurvedCranialGeometry(82, 24);
     const shell3Mat = new THREE.MeshStandardMaterial({
-      roughness: 0.28,
-      metalness: 0.22,
+      roughness: 0.44,
+      metalness: 0.0,
       transparent: true,
       opacity: 0.80,
-      alphaTest: 0.04,
+      alphaTest: 0.001,
       side: THREE.DoubleSide,
       depthTest: true,
-      depthWrite: true,
+      depthWrite: false,
+      blending: THREE.NormalBlending,
     });
     materials.push(shell3Mat);
     const shell3Mesh = new THREE.Mesh(shell3Geo, shell3Mat);
-    shell3Mesh.position.set(0, 0, 25 + (calib.zOffset - 14));
+    shell3Mesh.position.set(0, 0, 24 + (calib.zOffset - 14));
     shell3Mesh.renderOrder = 8;
     volumetricHairGroup.add(shell3Mesh);
     meshes.push(shell3Mesh);
@@ -696,7 +705,7 @@ export function ARHairCanvas3D({
           m.map = tex;
           if (normalMap && (idx === 2 || idx === 3 || idx >= 4)) {
             m.normalMap = normalMap;
-            m.normalScale = new THREE.Vector2(2.2, 2.2);
+            m.normalScale = new THREE.Vector2(0.55, 0.55);
           }
           m.needsUpdate = true;
         });
