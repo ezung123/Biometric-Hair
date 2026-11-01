@@ -81,6 +81,22 @@ const HAIRSTYLE_LENSES: HairstyleLensItem[] = [
     gender: 'men',
     targetMorphology: 'Round',
   },
+  {
+    id: 'afro-taper',
+    name: 'Afro Taper',
+    thumbnail: require('@/assets/images/hair_afro_taper.png'),
+    category: 'Fade',
+    gender: 'men',
+    targetMorphology: 'Oval',
+  },
+  {
+    id: 'curly-fringe',
+    name: 'Curly Fringe',
+    thumbnail: require('@/assets/images/hair_curly_fringe.png'),
+    category: 'Curls',
+    gender: 'men',
+    targetMorphology: 'Oblong',
+  },
   // Women's Styles
   {
     id: 'layered-waves',
@@ -105,6 +121,14 @@ const HAIRSTYLE_LENSES: HairstyleLensItem[] = [
     category: 'Pixie',
     gender: 'women',
     targetMorphology: 'Square',
+  },
+  {
+    id: 'box-braids',
+    name: 'Box Braids',
+    thumbnail: require('@/assets/images/hair_box_braids.png'),
+    category: 'Braids',
+    gender: 'women',
+    targetMorphology: 'Oval',
   },
 ];
 
@@ -158,10 +182,10 @@ export default function HomeScreen() {
     previewUrl: '',
   };
 
-  // Shutter Press: Captures live frame from laptop webcam and runs Meta Muse AI
+    // Shutter Press: Captures live frame and immediately opens Biometric AI Makeover Studio
   async function handleShutterPress() {
     setIsAnalyzing(true);
-    setAnalysisStatus('Snapping photo...');
+    setAnalysisStatus('Capturing biometric portrait...');
 
     const snapshotUri = cameraRef.current?.captureSnapshot();
     if (snapshotUri) {
@@ -170,22 +194,17 @@ export default function HomeScreen() {
       setCapturedPhotoUri(activePreset.imageUrl);
     }
 
-    setAnalysisStatus('Analyzing geometry with Meta Muse...');
+    // Immediately display the luxury biometric scanning screen inside TryOnModal
+    setTryOnVisible(true);
+    setIsAnalyzing(false);
+    setAnalysisStatus(null);
 
-    try {
-      const result = await analyzeFacialGeometryWithMuse(metrics);
-      setCurrentPrescription(result.prescription);
-      setAnalysisStatus('Analysis complete · 98% Harmony');
-      setTimeout(() => {
-        setAnalysisStatus(null);
-        setTryOnVisible(true);
-      }, 1500);
-    } catch {
-      setAnalysisStatus(null);
-      setTryOnVisible(true);
-    } finally {
-      setIsAnalyzing(false);
-    }
+    // Non-blocking geometry prescription
+    analyzeFacialGeometryWithMuse(metrics)
+      .then((result) => {
+        setCurrentPrescription(result.prescription);
+      })
+      .catch(() => {});
   }
 
   // Smoothly switch between face shape presets WITHOUT popups or freezing camera
@@ -223,26 +242,19 @@ export default function HomeScreen() {
     const file = event?.target?.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = async (e) => {
+            reader.onload = (e) => {
         const resultUri = e.target?.result as string;
         setCapturedPhotoUri(resultUri);
-        setIsAnalyzing(true);
-        setAnalysisStatus('Analyzing with Meta Muse...');
+        // Immediately trigger TryOnModal with luxury scanning animation
+        setTryOnVisible(true);
+        setIsAnalyzing(false);
+        setAnalysisStatus(null);
 
-        try {
-          const result = await analyzeFacialGeometryWithMuse(metrics);
-          setCurrentPrescription(result.prescription);
-          setAnalysisStatus('Analysis complete · 98% Match');
-          setTimeout(() => {
-            setAnalysisStatus(null);
-            setTryOnVisible(true);
-          }, 1500);
-        } catch {
-          setAnalysisStatus(null);
-          setTryOnVisible(true);
-        } finally {
-          setIsAnalyzing(false);
-        }
+        analyzeFacialGeometryWithMuse(metrics)
+          .then((result) => {
+            setCurrentPrescription(result.prescription);
+          })
+          .catch(() => {});
       };
       reader.readAsDataURL(file);
     }
@@ -272,7 +284,8 @@ export default function HomeScreen() {
         cameraEnabled={cameraEnabled}
         onToggleCamera={() => setCameraEnabled((v) => !v)}
         augmentedHairAsset={activeLens.thumbnail}
-        showAugmentation={cameraEnabled && !capturedPhotoUri}
+        activeStyleId={activeLens.id}
+        showAugmentation={true}
       />
 
       {/* ── 2. Top Controls (Pristine iOS Native Aesthetic) ── */}
