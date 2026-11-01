@@ -141,7 +141,7 @@ export default function HomeScreen() {
   // States
   const [cameraEnabled, setCameraEnabled] = useState(true);
   const [hudVisible, setHudVisible] = useState(true);
-  const [activeLensId, setActiveLensId] = useState<string>('curtain-fringe');
+  const [activeLensId, setActiveLensId] = useState<string>('textured-crop');
   const [activePresetIdx, setActivePresetIdx] = useState(0);
   const [capturedPhotoUri, setCapturedPhotoUri] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);

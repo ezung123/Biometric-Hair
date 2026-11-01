@@ -209,6 +209,8 @@ export interface ARHairCanvas3DProps {
   swayX?: number;          // Inertia bounce (px)
   depthZ?: number;        // Relative camera Z
   landmarks?: Array<{ x: number; y: number; z?: number }>;
+  videoWidth?: number;
+  videoHeight?: number;
   isMirrored?: boolean;
   visible?: boolean;
 }
@@ -220,8 +222,8 @@ export interface ARHairCanvas3DProps {
  * - Landmark 356: Left Temporal Crest
  * - Landmark 152: Chin / Vertical Reference (Gnathion)
  *
- * Replaces broken Euler roll math and manual unprojection guesswork with an
- * exact affine orthonormal transformation matrix [xAxis, yAxis, zAxis].
+ * Implements exact objectFit: 'cover' aspect ratio compensation to eliminate
+ * coordinate cropping distortions across mobile and desktop viewports.
  */
 export function updateHairMeshTransform(
   hairGroup: THREE.Group,
@@ -229,7 +231,8 @@ export function updateHairMeshTransform(
   camera: THREE.PerspectiveCamera,
   canvasWidth: number,
   canvasHeight: number,
-  baseModelWidth: number = 205.0,
+  videoWidth: number = 1280,
+  videoHeight: number = 720,
   isMirrored: boolean = true,
   calib?: StyleCalibration
 ): boolean {
@@ -241,57 +244,74 @@ export function updateHairMeshTransform(
   const visibleHeight = 2 * Math.tan(vFOV / 2) * distanceAtZero;
   const visibleWidth = visibleHeight * camera.aspect;
 
+  // 1. Precise objectFit: 'cover' scale and offset calculation
+  const safeVidW = videoWidth > 0 ? videoWidth : 1280;
+  const safeVidH = videoHeight > 0 ? videoHeight : 720;
+  const scaleCover = Math.max(canvasWidth / safeVidW, canvasHeight / safeVidH);
+  const renderedW = safeVidW * scaleCover;
+  const renderedH = safeVidH * scaleCover;
+  const offsetX = (canvasWidth - renderedW) / 2;
+  const offsetY = (canvasHeight - renderedH) / 2;
+
   // Helper to convert MediaPipe normalized coordinate to Three.js World Vector at depth Z
   const lmToWorld = (lm: { x: number; y: number; z?: number }) => {
-    // MediaPipe: X [0..1] left-to-right, Y [0..1] top-to-bottom
-    // In mirrored selfie mode: screen X = 1 - lm.x -> NDC X = -(lm.x * 2 - 1)
-    const ndcX = isMirrored ? -((lm.x * 2) - 1) : ((lm.x * 2) - 1);
-    const ndcY = -(lm.y * 2) + 1;
+    // MediaPipe normalized [0..1] to raw video pixel coordinate
+    const vidPxX = lm.x * safeVidW;
+    const vidPxY = lm.y * safeVidH;
 
-    // Project using landmark pseudo-depth
+    // Video pixel coordinate to container screen pixel coordinate (accounting for CSS scaleX(-1))
+    const screenX = isMirrored
+      ? canvasWidth - (vidPxX * scaleCover + offsetX)
+      : (vidPxX * scaleCover + offsetX);
+    const screenY = vidPxY * scaleCover + offsetY;
+
+    // Screen pixel to Three.js NDC [-1..1]
+    const ndcX = (screenX / canvasWidth) * 2 - 1;
+    const ndcY = -((screenY / canvasHeight) * 2 - 1);
+
+    // Project NDC into 3D camera world ray
     const vector = new THREE.Vector3(ndcX, ndcY, 0.5);
     vector.unproject(camera);
     const dir = vector.sub(camera.position).normalize();
 
-    // Map landmark Z relative to visible skull width in camera world units
-    const zDepth = -(lm.z || 0) * (visibleWidth * 0.40);
+    // Map landmark Z relative to head depth
+    const zDepth = -(lm.z || 0) * (visibleWidth * 0.35);
     const distance = (zDepth - camera.position.z) / (dir.z || -0.001);
     return camera.position.clone().add(dir.multiplyScalar(distance));
   };
 
-  const pTrichion = lmToWorld(landmarks[10]);     // Top hairline anchor
-  const pRightTemple = lmToWorld(landmarks[127]); // User's right
-  const pLeftTemple = lmToWorld(landmarks[356]);  // User's left
-  const pChin = lmToWorld(landmarks[152]);        // Chin base
+  const pTrichion = lmToWorld(landmarks[10]);     // Hairline center (Trichion)
+  const pRightTemple = lmToWorld(landmarks[127]); // Anatomical right temple
+  const pLeftTemple = lmToWorld(landmarks[356]);  // Anatomical left temple
+  const pChin = lmToWorld(landmarks[152]);        // Gnathion (chin base)
 
-  // 1. Compute Orthonormal Basis Vectors
-  // In mirrored mode: user's right temple is on screen-right (+X), left temple on screen-left (-X)
-  // In non-mirrored mode: user's right temple is on screen-left (-X), left temple on screen-right (+X)
-  const xAxis = (isMirrored
-    ? new THREE.Vector3().subVectors(pRightTemple, pLeftTemple)
-    : new THREE.Vector3().subVectors(pLeftTemple, pRightTemple)
-  ).normalize();
+  // Determine screen-right and screen-left points
+  const pScreenRight = pRightTemple.x > pLeftTemple.x ? pRightTemple : pLeftTemple;
+  const pScreenLeft = pRightTemple.x > pLeftTemple.x ? pLeftTemple : pRightTemple;
 
-  // Y-Axis: Upward vector perpendicular to face plane pointing from Chin through Trichion
+  // 1. Orthonormal Basis Vectors
+  // X-Axis points from screen-left to screen-right (+X)
+  const xAxis = new THREE.Vector3().subVectors(pScreenRight, pScreenLeft).normalize();
+
+  // Y-Axis: Upward along face from Chin through Trichion
   const vUp = new THREE.Vector3().subVectors(pTrichion, pChin).normalize();
 
-  // Z-Axis: Normal to the face pointing forward towards camera
+  // Z-Axis: Normal to face pointing towards camera
   const zAxis = new THREE.Vector3().crossVectors(xAxis, vUp).normalize();
 
   // Re-orthogonalize Y-Axis
   const yAxis = new THREE.Vector3().crossVectors(zAxis, xAxis).normalize();
 
-  // 2. Compute Dynamic Scale based on actual head width in world units
-  const currentHeadWidth = pRightTemple.distanceTo(pLeftTemple);
-  const refWidth = baseModelWidth < 1.0 ? baseModelWidth * 1280 : baseModelWidth;
+  // 2. Dynamic Anatomical Scale
+  const currentHeadWidth = pScreenRight.distanceTo(pScreenLeft);
+  const refSpan = 175.0; // Reference bitemporal span of base 3D hair asset (hairWidth = 245)
   const calibScale = calib?.scaleFactor ?? 1.0;
-  const scale = Math.max(0.20, Math.min(1.50, (currentHeadWidth / refWidth) * calibScale));
+  const scale = Math.max(0.35, Math.min(2.50, (currentHeadWidth / refSpan) * calibScale));
 
   // 3. Construct 4x4 Transform Matrix
   const rotationMatrix = new THREE.Matrix4();
   rotationMatrix.makeBasis(xAxis, yAxis, zAxis);
 
-  // Apply directly to Hair Group
   hairGroup.matrixAutoUpdate = false;
 
   const transformMatrix = new THREE.Matrix4();
@@ -316,6 +336,8 @@ export function ARHairCanvas3D({
   swayX = 0,
   depthZ = 0,
   landmarks,
+  videoWidth,
+  videoHeight,
   isMirrored = true,
   visible = true,
 }: ARHairCanvas3DProps) {
@@ -330,26 +352,6 @@ export function ARHairCanvas3D({
   const textureLoaderRef = useRef<THREE.TextureLoader | null>(null);
   const currentLoadedUriRef = useRef<string | null>(null);
 
-  // Helper to seat hairstyle root baseline directly at local (0, 0, 0)
-  const alignHairMeshToTrichion = (hairGroup: THREE.Group, styleId: string) => {
-    const calib = STYLE_CALIBRATION[styleId] || STYLE_CALIBRATION['classic-quiff'];
-    const hairHeight = 240;
-
-    // Reset local position before computing Box3
-    hairGroup.position.set(0, 0, 0);
-
-    // Compute bounding box across all cranial shells
-    const box = new THREE.Box3().setFromObject(hairGroup);
-    const bottomFrontCenter = new THREE.Vector3(
-      (box.min.x + box.max.x) / 2,
-      box.min.y + ((calib.yOffsetFactor || 0.05) * hairHeight), // Front root hairline baseline
-      box.max.z // Front surface of forehead
-    );
-
-    // Shift geometry so the root hairline sits exactly at local (0, 0, 0)
-    hairGroup.position.sub(bottomFrontCenter);
-  };
-
   // Synchronize 6-DOF 3D transformations & dynamic motion
   useEffect(() => {
     if (!headGroupRef.current || !cameraRef.current) return;
@@ -361,6 +363,12 @@ export function ARHairCanvas3D({
     const canvasW = canvasEl ? (canvasEl.clientWidth || window.innerWidth) : 400;
     const canvasH = canvasEl ? (canvasEl.clientHeight || window.innerHeight) : 600;
 
+    // Detect actual hardware video dimensions if available
+    const container = canvasEl?.parentElement;
+    const videoEl = (container?.querySelector('video') as HTMLVideoElement) || null;
+    const vidW = videoWidth || (videoEl && videoEl.videoWidth > 0 ? videoEl.videoWidth : 1280);
+    const vidH = videoHeight || (videoEl && videoEl.videoHeight > 0 ? videoEl.videoHeight : 720);
+
     // 1. Try Direct Affine Landmark Basis Matrix Transform
     const updatedWithLandmarks = updateHairMeshTransform(
       headGroup,
@@ -368,7 +376,8 @@ export function ARHairCanvas3D({
       camera,
       canvasW,
       canvasH,
-      205.0,
+      vidW,
+      vidH,
       isMirrored,
       calib
     );
@@ -381,21 +390,37 @@ export function ARHairCanvas3D({
       const visibleHeight = 2 * Math.tan(vFOV / 2) * distance;
       const visibleWidth = visibleHeight * camera.aspect;
 
-      const normalizedSkullSpan = Math.max(0.24, Math.min(0.58, skullWidthPx / canvasW));
-      const target3DHairWidth = visibleWidth * normalizedSkullSpan * 1.18;
-      const baseScale = target3DHairWidth / 245.0;
-      const finalScale = Math.max(0.28, Math.min(0.62, baseScale)) * calib.scaleFactor;
+      // Compensate for objectFit: 'cover' in fallback mode
+      const scaleCover = Math.max(canvasW / vidW, canvasH / vidH);
+      const renderedW = vidW * scaleCover;
+      const renderedH = vidH * scaleCover;
+      const offsetX = (canvasW - renderedW) / 2;
+      const offsetY = (canvasH - renderedH) / 2;
 
-      const targetX = ((centerPctX - 50) / 100) * visibleWidth + (swayX * 0.35);
-      const targetY = -((hairlinePctY - 50) / 100) * visibleHeight;
-      const targetZ = depthZ * 0.5;
+      const vidPxX = (centerPctX / 100) * vidW;
+      const vidPxY = (hairlinePctY / 100) * vidH;
+      const screenX = isMirrored ? canvasW - (vidPxX * scaleCover + offsetX) : (vidPxX * scaleCover + offsetX);
+      const screenY = vidPxY * scaleCover + offsetY;
 
-      headGroup.position.set(targetX, targetY, targetZ);
+      const ndcX = (screenX / canvasW) * 2 - 1;
+      const ndcY = -((screenY / canvasH) * 2 - 1);
+
+      const vector = new THREE.Vector3(ndcX, ndcY, 0.5);
+      vector.unproject(camera);
+      const dir = vector.sub(camera.position).normalize();
+      const dist = -camera.position.z / (dir.z || -0.001);
+      const targetPos = camera.position.clone().add(dir.multiplyScalar(dist));
+
+      const headWidthScreen = (skullWidthPx / canvasW) * visibleWidth;
+      const baseScale = headWidthScreen / 175.0;
+      const finalScale = Math.max(0.35, Math.min(2.5, baseScale)) * calib.scaleFactor;
+
+      headGroup.position.set(targetPos.x, targetPos.y, targetPos.z);
       headGroup.scale.set(finalScale, finalScale, finalScale);
 
       headGroup.rotation.x = pitchRad * 0.95;
       headGroup.rotation.y = yawRad * 0.98;
-      headGroup.rotation.z = -rollRad;
+      headGroup.rotation.z = rollRad;
     }
 
     // 3. Secondary Inertia Physics on the hair volume
@@ -403,7 +428,7 @@ export function ARHairCanvas3D({
       volumetricHairGroupRef.current.rotation.z = swayX * 0.015;
       volumetricHairGroupRef.current.position.x = swayX * 0.20;
     }
-  }, [landmarks, centerPctX, hairlinePctY, skullWidthPx, pitchRad, yawRad, rollRad, swayX, depthZ, activeStyleId, isMirrored]);
+  }, [landmarks, centerPctX, hairlinePctY, skullWidthPx, pitchRad, yawRad, rollRad, swayX, depthZ, activeStyleId, isMirrored, videoWidth, videoHeight]);
 
   // Update mesh geometry and vertical offset whenever hairstyle changes
   useEffect(() => {
@@ -417,7 +442,10 @@ export function ARHairCanvas3D({
       mesh.position.set(0, 0, zLayer + (calib.zOffset - 14));
     });
 
-    alignHairMeshToTrichion(volumetricHairGroupRef.current, activeStyleId);
+    // Anatomical Trichion hairline root baseline seating:
+    // Lifts root line so crown arches over cranial vault and fringe terminates naturally above brow
+    const yHairlineShift = 36 + ((calib.yOffsetFactor || 0.05) * 120);
+    volumetricHairGroupRef.current.position.set(0, yHairlineShift, 0);
   }, [activeStyleId]);
 
   // Load and apply hair texture map and real-time normal map whenever hairstyle changes
@@ -523,21 +551,7 @@ export function ARHairCanvas3D({
     scene.add(headGroup);
     headGroupRef.current = headGroup;
 
-    // 4. Invisible 3D Anatomical Head & Face Occluder
-    // Uses colorWrite: false and depthWrite: true so it is 100% invisible
-    // but populates the Z-buffer so hair strands drape behind the ear/jaw correctly!
-    const occluderGeo = new THREE.SphereGeometry(95, 32, 24);
-    occluderGeo.scale(1.05, 1.28, 1.10);
-    const occluderMat = new THREE.MeshBasicMaterial({
-      colorWrite: false,
-      depthWrite: true,
-    });
-    const occluderMesh = new THREE.Mesh(occluderGeo, occluderMat);
-    occluderMesh.position.set(0, -70, -45);
-    occluderMesh.renderOrder = -1; // Render before hair shells
-    headGroup.add(occluderMesh);
-
-    // 5. 3D Volumetric Hairstyle Root Group
+    // 4. 3D Volumetric Hairstyle Root Group
     const volumetricHairGroup = new THREE.Group();
     headGroup.add(volumetricHairGroup);
     volumetricHairGroupRef.current = volumetricHairGroup;
@@ -652,8 +666,9 @@ export function ARHairCanvas3D({
     volumetricHairGroup.add(shell3Mesh);
     meshes.push(shell3Mesh);
 
-    // Seat hairstyle root hairline baseline directly at local (0, 0, 0)
-    alignHairMeshToTrichion(volumetricHairGroup, activeStyleId);
+    // Initial anatomical hairline root seating
+    const initialYShift = 36 + ((calib.yOffsetFactor || 0.05) * 120);
+    volumetricHairGroup.position.set(0, initialYShift, 0);
 
     
 

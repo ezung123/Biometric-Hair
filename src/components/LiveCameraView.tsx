@@ -54,7 +54,7 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
       cameraEnabled = true,
       onToggleCamera,
       augmentedHairAsset,
-      activeStyleId = 'curtain-fringe',
+      activeStyleId = 'textured-crop',
       showAugmentation = true,
     },
     ref
@@ -433,6 +433,8 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
             rollRad={boundaryState.rollRad}
             swayX={boundaryState.swayX}
             landmarks={boundaryState.landmarks}
+            videoWidth={videoRef.current?.videoWidth || 1280}
+            videoHeight={videoRef.current?.videoHeight || 720}
             isMirrored={true}
             visible={true}
           />
