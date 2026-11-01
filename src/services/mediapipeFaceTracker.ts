@@ -190,6 +190,7 @@ export function trackHeadPose3D(
         rollRad: result.rollRad,
         depthZ: 0,
         confidence: result.confidence,
+        landmarks: result.landmarks,
       };
     }
   }

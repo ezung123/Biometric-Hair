@@ -215,6 +215,16 @@ export function detectHairlineDecisionBoundary(
   const crownPctY = Math.max(3, Math.min(hairlinePctY - 6, (finalCrownY / h) * 100));
   const skullWidthPct = Math.min(55, Math.max(22, (faceWidth / w) * 100));
 
+  // Synthesize key cephalometric landmarks for affine cranial basis transform
+  const syntheticLandmarks: Array<{ x: number; y: number; z: number }> = new Array(468);
+  for (let i = 0; i < 468; i++) {
+    syntheticLandmarks[i] = { x: faceCenterX / w, y: finalHairlineY / h, z: 0 };
+  }
+  syntheticLandmarks[10] = { x: faceCenterX / w, y: finalHairlineY / h, z: 0 }; // Trichion (hairline)
+  syntheticLandmarks[152] = { x: faceCenterX / w, y: Math.min(1.0, (foreheadSeedY + faceHeight * 0.55) / h), z: 0 }; // Chin base
+  syntheticLandmarks[127] = { x: Math.max(0, (faceCenterX - faceWidth * 0.46) / w), y: (finalHairlineY + faceHeight * 0.12) / h, z: -0.02 }; // Right temple
+  syntheticLandmarks[356] = { x: Math.min(1.0, (faceCenterX + faceWidth * 0.46) / w), y: (finalHairlineY + faceHeight * 0.12) / h, z: -0.02 }; // Left temple
+
   return {
     detected: true,
     hairlinePctY,
@@ -225,5 +235,6 @@ export function detectHairlineDecisionBoundary(
     yawRad,
     rollRad,
     confidence: Math.min(1.0, hairlinePoints.length / rayCount),
+    landmarks: syntheticLandmarks,
   };
 }

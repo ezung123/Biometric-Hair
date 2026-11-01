@@ -1,7 +1,11 @@
-// ─── LiveCameraView (Real-time AR Snapchat-Style Face Tracking) ─────────────
-// Real-time camera viewfinder with hardware power control, Neoclassical reticle,
-// and real-time head motion tracking that dynamically anchors the transparent hair wig
-// to the user's forehead as they move in front of their laptop camera.
+// ══════════════════════════════════════════════════════════════════════════════
+// LiveCameraView (Real-time 3D AR Head Tracking with 6-DOF Volumetric Motion)
+// Automatically tracks natural Trichion hairline, skull contour, and 3D rotations:
+// - Pitch (looking up/down)
+// - Yaw (turning left/right)
+// - Roll (tilting left/right)
+// Renders True 3D Volumetric Hairstyle with Three.js WebGL & Anatomical Occluder.
+// ══════════════════════════════════════════════════════════════════════════════
 
 import React, { useCallback, useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import {
@@ -11,10 +15,14 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
 
 import { useAppTheme } from '@/context/ThemeContext';
 import { BiometricOverlay } from './BiometricOverlay';
+import { ARHairCanvas3D } from './ARHairCanvas3D';
+import { initMediaPipe, trackHeadPose3D } from '@/services/mediapipeFaceTracker';
+import { detectHairlineDecisionBoundary } from '@/services/hairlineDetector';
 import type { FacialMetrics } from '@/types';
 
 export interface LiveCameraViewRef {
@@ -32,6 +40,7 @@ interface LiveCameraViewProps {
   cameraEnabled?: boolean;
   onToggleCamera?: () => void;
   augmentedHairAsset?: any;
+  activeStyleId?: string;
   showAugmentation?: boolean;
 }
 
@@ -45,30 +54,46 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
       cameraEnabled = true,
       onToggleCamera,
       augmentedHairAsset,
+      activeStyleId = 'curtain-fringe',
       showAugmentation = true,
     },
     ref
   ) => {
     const { colors, isDark } = useAppTheme();
+    const { width: windowW } = useWindowDimensions();
     const [hasCameraStream, setHasCameraStream] = useState(false);
     const [cameraPermissionError, setCameraPermissionError] = useState(false);
 
-    // Dynamic Head Pose tracking & hair physics (moves & sways naturally with user like Snapchat)
-    const [headPose, setHeadPose] = useState<{
-      x: number;
-      y: number;
-      scale: number;
-      rotationDeg: number;
-      swayX: number;
+    // 6-DOF 3D Head Pose & Hairline State
+    const [boundaryState, setBoundaryState] = useState<{
+      hairlinePctY: number;  // Exact natural hairline line (Trichion)
+      centerPctX: number;    // Exact skull center X
+      skullWidthPx: number;  // Calculated width of the cranium in screen pixels
+      pitchRad: number;      // 3D Pitch rotation
+      yawRad: number;        // 3D Yaw rotation
+      rollRad: number;       // 3D Roll rotation
+      swayX: number;         // Dynamic inertia physics
+      depthZ: number;        // 3D Depth distance
+      confidence: number;    // Detection confidence score
+      landmarks?: Array<{ x: number; y: number; z?: number }>;
     }>({
-      x: 50,
-      y: 28,
-      scale: 1.0,
-      rotationDeg: 0,
+      hairlinePctY: 28.0,
+      centerPctX: 50.0,
+      skullWidthPx: 270,
+      pitchRad: 0,
+      yawRad: 0,
+      rollRad: 0,
       swayX: 0,
+      depthZ: 0,
+      confidence: 0,
+      landmarks: undefined,
     });
 
-    const lastPoseRef = useRef<{ x: number; y: number; time: number }>({ x: 50, y: 28, time: Date.now() });
+    const lastBoundaryRef = useRef<{ x: number; y: number; time: number }>({
+      x: 50.0,
+      y: 22.0,
+      time: Date.now(),
+    });
     const hairPhysicsVelocity = useRef<number>(0);
 
     const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -76,13 +101,11 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
     const trackingCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const trackingIntervalRef = useRef<any>(null);
 
-    // Multi-tier fallback getUserMedia for Windows laptop webcams
     async function requestWebcamStream(): Promise<MediaStream> {
       if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
         throw new Error('Webcam API is not supported in this browser.');
       }
 
-      // Tier 1: User facing camera
       try {
         return await navigator.mediaDevices.getUserMedia({
           video: {
@@ -96,7 +119,6 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
         console.warn('[Camera] Tier 1 failed, trying generic video constraint:', err1);
       }
 
-      // Tier 2: Generic video constraint
       try {
         return await navigator.mediaDevices.getUserMedia({
           video: true,
@@ -106,14 +128,12 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
         console.warn('[Camera] Tier 2 failed, trying standard resolution:', err2);
       }
 
-      // Tier 3: Low resolution fallback
       return await navigator.mediaDevices.getUserMedia({
         video: { width: 640, height: 480 },
         audio: false,
       });
     }
 
-    // Attach stream to video element with full autoplay compliance
     const attachStreamToVideo = useCallback((stream: MediaStream | null) => {
       const video = videoRef.current;
       if (!video) return;
@@ -147,6 +167,8 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
       if (Platform.OS !== 'web') return;
 
       setCameraPermissionError(false);
+      // Pre-warm MediaPipe FaceLandmarker pipeline
+      initMediaPipe().catch(() => {});
 
       try {
         const stream = await requestWebcamStream();
@@ -172,179 +194,124 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
       onCameraActive?.(false);
     }
 
-    // Real-Time AR Face Tracking Loop (Snapchat filter physics)
+    // 6-DOF 3D Head Tracking Loop at 30 FPS
     useEffect(() => {
       if (!hasCameraStream || !cameraEnabled || Platform.OS !== 'web') {
         if (trackingIntervalRef.current) clearInterval(trackingIntervalRef.current);
         return;
       }
 
-      // Check if native FaceDetector is available in Chromium
-      const NativeFaceDetector = typeof window !== 'undefined' ? (window as any).FaceDetector : null;
-      let faceDetectorInstance: any = null;
-      if (NativeFaceDetector) {
-        try {
-          faceDetectorInstance = new NativeFaceDetector({ fastMode: true, maxDetectedFaces: 1 });
-        } catch {
-          faceDetectorInstance = null;
-        }
+      if (!trackingCanvasRef.current) {
+        trackingCanvasRef.current = document.createElement('canvas');
+        trackingCanvasRef.current.width = 160;
+        trackingCanvasRef.current.height = 120;
       }
 
-      trackingIntervalRef.current = setInterval(async () => {
+      trackingIntervalRef.current = setInterval(() => {
         const video = videoRef.current;
         if (!video || video.paused || video.ended || video.videoWidth === 0) return;
 
-        // Path A: Native hardware-accelerated FaceDetector API
-        if (faceDetectorInstance) {
-          try {
-            const faces = await faceDetectorInstance.detect(video);
-            if (faces && faces.length > 0) {
-              const box = faces[0].boundingBox;
-              const videoW = video.videoWidth || 640;
-              const videoH = video.videoHeight || 480;
-
-              // Mirrored video horizontally
-              const faceCenterX = box.x + box.width / 2;
-              const mirroredPctX = 100 - (faceCenterX / videoW) * 100;
-              // Anchor right at upper forehead/hairline
-              const hairlinePctY = Math.max(12, (box.y / videoH) * 100);
-              const scale = Math.min(1.25, Math.max(0.65, box.width / (videoW * 0.32)));
-
-              // ── Hair Wave & Inertia Physics (Snapchat-style spring-damper sway) ──
-              const now = Date.now();
-              const dt = Math.max(0.016, (now - lastPoseRef.current.time) / 1000);
-              const dx = mirroredPctX - lastPoseRef.current.x;
-              lastPoseRef.current = { x: mirroredPctX, y: hairlinePctY, time: now };
-
-              const headVelocityX = dx / dt; // % per second
-              const springK = 35.0;
-              const dampingC = 6.5;
-              const targetSway = -Math.max(-25, Math.min(25, headVelocityX * 0.18));
-
-              hairPhysicsVelocity.current += (springK * (targetSway - (headPose.swayX || 0)) - dampingC * hairPhysicsVelocity.current) * dt;
-              const nextSwayX = (headPose.swayX || 0) + hairPhysicsVelocity.current * dt;
-              const targetRotation = Math.max(-12, Math.min(12, headVelocityX * 0.08));
-
-              setHeadPose((prev) => ({
-                x: prev.x * 0.70 + mirroredPctX * 0.30,
-                y: prev.y * 0.70 + hairlinePctY * 0.30,
-                scale: prev.scale * 0.70 + scale * 0.30,
-                rotationDeg: prev.rotationDeg * 0.75 + targetRotation * 0.25,
-                swayX: Math.max(-18, Math.min(18, nextSwayX)),
-              }));
-              return;
-            }
-          } catch {
-            // Fall back to computer vision canvas tracker
-          }
-        }
-
-        // Path B: Robust Head Isolation Canvas Tracker (Torso & Shirtless Rejection)
-        if (!trackingCanvasRef.current) {
-          trackingCanvasRef.current = document.createElement('canvas');
-          trackingCanvasRef.current.width = 120;
-          trackingCanvasRef.current.height = 90;
-        }
-
         const canvas = trackingCanvasRef.current;
+        if (!canvas) return;
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         if (!ctx) return;
 
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imgData.data;
 
-        // Pass 1: Find the uppermost cluster (the head/forehead)
-        let topY = canvas.height;
-        for (let y = 0; y < canvas.height; y++) {
-          let skinRowPixels = 0;
-          for (let x = 0; x < canvas.width; x++) {
-            const idx = (y * canvas.width + x) * 4;
-            const r = data[idx];
-            const g = data[idx + 1];
-            const b = data[idx + 2];
-            // Skin chrominance
-            if (r > 60 && g > 40 && b > 20 && r > g && r > b && (r - g) > 12) {
-              skinRowPixels++;
-            }
-          }
-          if (skinRowPixels >= 6) {
-            topY = y;
-            break;
-          }
-        }
+        // Compute 6-DOF 3D head tracking via MediaPipe + Biometric Fallback
+        const result = trackHeadPose3D(video, canvas, windowW);
 
-        if (topY >= canvas.height - 10) return; // No face detected
-
-        // Pass 2: Restrict tracking window to head only (avoid shirtless chest/shoulders)
-        const headMaxY = Math.min(canvas.height, topY + 45);
-        let sumX = 0;
-        let sumY = 0;
-        let count = 0;
-        let minX = canvas.width, maxX = 0;
-
-        for (let y = topY; y < headMaxY; y++) {
-          for (let x = 0; x < canvas.width; x++) {
-            const idx = (y * canvas.width + x) * 4;
-            const r = data[idx];
-            const g = data[idx + 1];
-            const b = data[idx + 2];
-            if (r > 60 && g > 40 && b > 20 && r > g && r > b && (r - g) > 12) {
-              sumX += x;
-              sumY += y;
-              count++;
-              if (x < minX) minX = x;
-              if (x > maxX) maxX = x;
-            }
-          }
-        }
-
-        // Smoothly interpolate tracking updates & compute hair wave physics
-        if (count > 80 && maxX > minX) {
-          const rawCenterX = sumX / count;
-          const mirroredPctX = 100 - (rawCenterX / canvas.width) * 100;
-          // Position anchor right at top of head / trichion line
-          const hairlinePctY = Math.max(12, ((topY - 4) / canvas.height) * 100);
-          const headWidth = maxX - minX;
-          // Scale proportional to head width
-          const dynamicScale = Math.min(1.25, Math.max(0.65, headWidth / 42.0));
-
-          // ── Hair Wave & Inertia Physics (Snapchat-style spring-damper sway) ──
+        if (result.detected) {
           const now = Date.now();
-          const dt = Math.max(0.016, (now - lastPoseRef.current.time) / 1000);
-          const dx = mirroredPctX - lastPoseRef.current.x;
-          lastPoseRef.current = { x: mirroredPctX, y: hairlinePctY, time: now };
+          const dt = Math.max(0.016, (now - lastBoundaryRef.current.time) / 1000);
+          const dx = result.centerPctX - lastBoundaryRef.current.x;
+          lastBoundaryRef.current = { x: result.centerPctX, y: result.hairlinePctY, time: now };
 
-          // Instantaneous head horizontal velocity
-          const headVelocityX = dx / dt; // % per second
+          const headVelocityX = dx / dt;
+          const springK = 35.0;
+          const dampingC = 6.5;
+          const targetSway = -Math.max(-20, Math.min(20, headVelocityX * 0.15));
 
-          // Spring-damper integration: hair lags behind head turn, then sways back
-          const springK = 35.0; // Spring stiffness
-          const dampingC = 6.5; // Viscous damping
-          const targetSway = -Math.max(-25, Math.min(25, headVelocityX * 0.18)); // Drag opposite to movement
+          hairPhysicsVelocity.current +=
+            (springK * (targetSway - (boundaryState.swayX || 0)) -
+              dampingC * hairPhysicsVelocity.current) *
+            dt;
+          const nextSwayX = (boundaryState.swayX || 0) + hairPhysicsVelocity.current * dt;
 
-          hairPhysicsVelocity.current += (springK * (targetSway - (headPose.swayX || 0)) - dampingC * hairPhysicsVelocity.current) * dt;
-          const nextSwayX = (headPose.swayX || 0) + hairPhysicsVelocity.current * dt;
+          setBoundaryState((prev) => {
+            const nextHairline = prev.hairlinePctY * 0.45 + result.hairlinePctY * 0.55;
+            const nextCenterX = prev.centerPctX * 0.45 + result.centerPctX * 0.55;
+            const nextSkull = prev.skullWidthPx * 0.55 + result.skullWidthPx * 0.45;
+            const nextPitch = prev.pitchRad * 0.45 + result.pitchRad * 0.55;
+            const nextYaw = prev.yawRad * 0.45 + result.yawRad * 0.55;
+            const nextRoll = prev.rollRad * 0.45 + result.rollRad * 0.55;
+            const clampedSway = Math.max(-15, Math.min(15, nextSwayX));
 
-          // Head tilt angle approximation based on head movement velocity
-          const targetRotation = Math.max(-12, Math.min(12, headVelocityX * 0.08));
+            // Deadband filtering: prevent re-render cascades if changes are sub-threshold
+            const dCenter = Math.abs(nextCenterX - prev.centerPctX);
+            const dHairline = Math.abs(nextHairline - prev.hairlinePctY);
+            const dYaw = Math.abs(nextYaw - prev.yawRad);
+            const dPitch = Math.abs(nextPitch - prev.pitchRad);
+            if (dCenter < 0.08 && dHairline < 0.08 && dYaw < 0.008 && dPitch < 0.008) {
+              return prev; // Maintain reference to avoid React DOM reconciliation overhead
+            }
 
-          setHeadPose((prev) => ({
-            x: prev.x * 0.72 + mirroredPctX * 0.28,
-            y: prev.y * 0.72 + hairlinePctY * 0.28,
-            scale: prev.scale * 0.75 + dynamicScale * 0.25,
-            rotationDeg: prev.rotationDeg * 0.75 + targetRotation * 0.25,
-            swayX: Math.max(-18, Math.min(18, nextSwayX)),
-          }));
+            return {
+              hairlinePctY: nextHairline,
+              centerPctX: nextCenterX,
+              skullWidthPx: nextSkull,
+              pitchRad: nextPitch,
+              yawRad: nextYaw,
+              rollRad: nextRoll,
+              swayX: clampedSway,
+              depthZ: result.depthZ,
+              confidence: result.confidence,
+              landmarks: result.landmarks,
+            };
+          });
         }
-      }, 35); // ~30 FPS tracking update rate
+      }, 33);
 
       return () => {
         if (trackingIntervalRef.current) clearInterval(trackingIntervalRef.current);
       };
-    }, [hasCameraStream, cameraEnabled]);
+    }, [hasCameraStream, cameraEnabled, windowW]);
 
-    // React to cameraEnabled prop changes
+    // 6-DOF 3D Head Detection on Frozen Photo Snapshot or Uploaded Image
+    useEffect(() => {
+      if (!frozenImageUri || Platform.OS !== 'web') return;
+
+      const img = new (window as any).Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const canvas = trackingCanvasRef.current || document.createElement('canvas');
+        canvas.width = 160;
+        canvas.height = 120;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) return;
+
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const result = detectHairlineDecisionBoundary(canvas);
+
+        if (result.detected) {
+          const targetSkullPx = (result.skullWidthPct / 100) * windowW * 1.30;
+          setBoundaryState({
+            hairlinePctY: result.hairlinePctY,
+            centerPctX: result.centerPctX,
+            skullWidthPx: targetSkullPx,
+            pitchRad: result.pitchRad,
+            yawRad: result.yawRad,
+            rollRad: result.rollRad,
+            swayX: 0,
+            depthZ: 0,
+            confidence: result.confidence,
+            landmarks: result.landmarks,
+          });
+        }
+      };
+      img.src = frozenImageUri;
+    }, [frozenImageUri, windowW]);
+
     useEffect(() => {
       if (cameraEnabled) {
         startCamera();
@@ -357,7 +324,6 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
       };
     }, [cameraEnabled]);
 
-    // Expose captureSnapshot & controls to parent
     useImperativeHandle(ref, () => ({
       captureSnapshot: () => {
         if (Platform.OS === 'web' && videoRef.current && hasCameraStream) {
@@ -369,7 +335,6 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
               canvas.height = video.videoHeight;
               const ctx = canvas.getContext('2d');
               if (ctx) {
-                // Mirror capture to match mirrored viewfinder
                 ctx.translate(canvas.width, 0);
                 ctx.scale(-1, 1);
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -419,7 +384,6 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
             resizeMode="cover"
           />
         ) : !cameraEnabled ? (
-          // Camera Paused by User
           <View style={styles.cameraOffContainer}>
             <View style={[styles.cameraOffPill, { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' }]}>
               <Text style={[styles.cameraOffTitle, { color: colors.text }]}>Camera Paused</Text>
@@ -435,7 +399,6 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
             </View>
           </View>
         ) : !hasCameraStream ? (
-          // Awaiting Permission / Loading Feed
           <View style={styles.fallbackContainer}>
             <Image
               source={{ uri: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=900&q=80' }}
@@ -456,39 +419,32 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
           </View>
         ) : null}
 
-        {/* ── 3. AR Head-Tracking Hairstyle Wig with Hair Wave Physics ── */}
-        {showAugmentation && augmentedHairAsset && hasCameraStream && cameraEnabled && !frozenImageUri && (
-          <View
-            style={[
-              styles.arWigAnchor,
-              {
-                left: `${headPose.x}%`,
-                top: `${headPose.y}%`,
-                width: 280 * headPose.scale,
-                height: 270 * headPose.scale,
-                transform: [
-                  { translateX: (-140 + (headPose.swayX || 0)) * headPose.scale },
-                  { translateY: -195 * headPose.scale },
-                  { rotate: `${headPose.rotationDeg || 0}deg` },
-                ],
-              },
-            ]}
-            pointerEvents="none"
-          >
-            <Image
-              source={augmentedHairAsset}
-              style={styles.arWigImage}
-              resizeMode="contain"
-            />
-          </View>
+        {/* ── 3. True 3D Volumetric Hairstyle with 6-DOF Motion (Pitch, Yaw, Roll) ── */}
+        <View style={[StyleSheet.absoluteFill, { zIndex: 10 }]} pointerEvents="none">
+        {showAugmentation && (
+          <ARHairCanvas3D
+            activeStyleId={activeStyleId}
+            hairAssetUri={augmentedHairAsset}
+            hairlinePctY={boundaryState.hairlinePctY}
+            centerPctX={boundaryState.centerPctX}
+            skullWidthPx={boundaryState.skullWidthPx}
+            pitchRad={boundaryState.pitchRad}
+            yawRad={boundaryState.yawRad}
+            rollRad={boundaryState.rollRad}
+            swayX={boundaryState.swayX}
+            landmarks={boundaryState.landmarks}
+            isMirrored={true}
+            visible={true}
+          />
         )}
+        </View>
 
-        {/* ── 4. AR Neoclassical Reticle Overlay (Clean Golden Ratio Oval) ── */}
+        {/* ── 4. AR Neoclassical Reticle Overlay ── */}
         <View style={styles.overlayWrapper} pointerEvents="none">
           <BiometricOverlay visible={hudVisible} metrics={metrics} />
         </View>
 
-        {/* ── 5. Status Pill ── */}
+        {/* ── 5. Status Pill: 3D Volumetric Tracking State ── */}
         <View style={styles.reticleBadgeWrapper} pointerEvents="none">
           <View
             style={[
@@ -507,9 +463,9 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
             />
             <Text style={[styles.reticleText, { color: colors.accent }]}>
               {frozenImageUri
-                ? 'SNAPSHOT CAPTURED'
+                ? 'AUGMENTED SNAPSHOT CAPTURED'
                 : hasCameraStream
-                ? 'LIVE AR MIRROR'
+                ? `TRUE 3D VOLUMETRIC AR · PITCH ${(boundaryState.pitchRad * 180 / Math.PI).toFixed(0)}° · YAW ${(boundaryState.yawRad * 180 / Math.PI).toFixed(0)}°`
                 : 'ALIGN FACE IN GOLDEN OVAL'}
             </Text>
           </View>
@@ -601,18 +557,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   overlayWrapper: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 6,
-  },
-  arWigAnchor: {
-    position: 'absolute',
-    zIndex: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  arWigImage: {
-    width: '100%',
-    height: '100%',
   },
   reticleBadgeWrapper: {
     position: 'absolute',
@@ -626,7 +572,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,

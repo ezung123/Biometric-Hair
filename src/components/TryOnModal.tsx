@@ -503,6 +503,8 @@ export function TryOnModal({
                       yawRad={0}
                       rollRad={0}
                       swayX={0}
+                      landmarks={detectedPose.landmarks}
+                      isMirrored={false}
                       visible={true}
                     />
                   </div>
