@@ -304,9 +304,9 @@ export function updateHairMeshTransform(
 
   // 2. Dynamic Anatomical Scale
   const currentHeadWidth = pScreenRight.distanceTo(pScreenLeft);
-  const refSpan = 175.0; // Reference bitemporal span of base 3D hair asset (hairWidth = 245)
+  const refSpan = 150.0; // Calibrated bitemporal reference span for full lateral cranial coverage
   const calibScale = calib?.scaleFactor ?? 1.0;
-  const scale = Math.max(0.35, Math.min(2.50, (currentHeadWidth / refSpan) * calibScale));
+  const scale = Math.max(0.40, Math.min(2.50, (currentHeadWidth / refSpan) * calibScale));
 
   // 3. Construct 4x4 Transform Matrix
   const rotationMatrix = new THREE.Matrix4();
@@ -412,8 +412,8 @@ export function ARHairCanvas3D({
       const targetPos = camera.position.clone().add(dir.multiplyScalar(dist));
 
       const headWidthScreen = (skullWidthPx / canvasW) * visibleWidth;
-      const baseScale = headWidthScreen / 175.0;
-      const finalScale = Math.max(0.35, Math.min(2.5, baseScale)) * calib.scaleFactor;
+      const baseScale = headWidthScreen / 150.0;
+      const finalScale = Math.max(0.40, Math.min(2.5, baseScale)) * calib.scaleFactor;
 
       headGroup.position.set(targetPos.x, targetPos.y, targetPos.z);
       headGroup.scale.set(finalScale, finalScale, finalScale);
@@ -444,7 +444,7 @@ export function ARHairCanvas3D({
 
     // Anatomical Trichion hairline root baseline seating:
     // Lifts root line so crown arches over cranial vault and fringe terminates naturally above brow
-    const yHairlineShift = 36 + ((calib.yOffsetFactor || 0.05) * 120);
+    const yHairlineShift = 52 + ((calib.yOffsetFactor || 0.05) * 120);
     volumetricHairGroupRef.current.position.set(0, yHairlineShift, 0);
   }, [activeStyleId]);
 
@@ -560,7 +560,7 @@ export function ARHairCanvas3D({
     const geometries: THREE.BufferGeometry[] = [];
     const meshes: THREE.Mesh[] = [];
 
-    const hairWidth = 245;
+    const hairWidth = 265;
     const hairHeight = 240;
     const calib = STYLE_CALIBRATION[activeStyleId] || STYLE_CALIBRATION['classic-quiff'];
 
@@ -577,7 +577,7 @@ export function ARHairCanvas3D({
         // Spheroid cranial curvature:
         // - Coronal curvature: sweeps backward around temples into -Z
         // - Sagittal curvature: arches over top of cranium into -Z
-        const zCurvature = -Math.pow(u, 2) * (curvatureDepth * 0.90) - (v > 0 ? Math.pow(v, 1.8) * (curvatureDepth * 0.55) : 0);
+        const zCurvature = -Math.pow(u, 2) * (curvatureDepth * 0.62) - (v > 0 ? Math.pow(v, 1.6) * (curvatureDepth * 0.45) : 0);
         pos.setZ(i, zCurvature + radialExpansion);
       }
       geo.computeVertexNormals();
@@ -667,7 +667,7 @@ export function ARHairCanvas3D({
     meshes.push(shell3Mesh);
 
     // Initial anatomical hairline root seating
-    const initialYShift = 36 + ((calib.yOffsetFactor || 0.05) * 120);
+    const initialYShift = 52 + ((calib.yOffsetFactor || 0.05) * 120);
     volumetricHairGroup.position.set(0, initialYShift, 0);
 
     
