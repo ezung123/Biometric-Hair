@@ -7,7 +7,7 @@
 // 4. Mathematical Immutability Blit: 100% untouched original face pixels guaranteed
 // ==============================================================================
 
-import { ASSET_FILENAME_MAP, STYLE_CALIBRATION, resolveHairAssetUrl } from '@/components/ARHairCanvas3D';
+import { ASSET_FILENAME_MAP, STYLE_CALIBRATION, STYLE_HAIRLINE_V, resolveHairAssetUrl } from '@/components/ARHairCanvas3D';
 import type { HeadPose3DResult } from './hairlineDetector';
 import { MEDIAPIPE_FACE_OVAL_INDICES, buildMetaSamPrompts } from './modalService';
 
@@ -172,8 +172,9 @@ export async function synthesizePhotorealisticHair(
             const hairWidth = skullWidth * 1.15 * (calib.scaleFactor || 1.0);
             const hairHeight = (hairWidth / hairImg.naturalWidth) * hairImg.naturalHeight;
             const hairX = faceCenterX - hairWidth / 2;
-            // Seating: fringe aligns with Trichion hairline boundary
-            const hairY = hairlineY - hairHeight * 0.35 + (calib.yOffsetFactor || 0.05) * hairHeight;
+            // Seating: fringe / root boundary aligns directly with Trichion hairline boundary
+            const vHairline = STYLE_HAIRLINE_V[styleId] ?? 0.50;
+            const hairY = hairlineY - (1.0 - vHairline) * hairHeight;
 
             // -------------------------------------------------------------
             // Step 1: Suppress Original Silhouette for Short Styles
