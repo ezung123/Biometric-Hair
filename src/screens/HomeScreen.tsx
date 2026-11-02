@@ -42,6 +42,14 @@ interface HairstyleLensItem {
 const HAIRSTYLE_LENSES: HairstyleLensItem[] = [
   // Men's Styles
   {
+    id: 'volumetric-hairdeck',
+    name: '3D Hair Cards (GLB)',
+    thumbnail: require('@/assets/images/hair_classic_quiff.png'),
+    category: 'True 3D GLB',
+    gender: 'men',
+    targetMorphology: 'Oval',
+  },
+  {
     id: 'curtain-fringe',
     name: 'Curtain Fringe',
     thumbnail: require('@/assets/images/hair_curtain_fringe.png'),

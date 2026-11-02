@@ -11,6 +11,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 // Exact hairline baseline UV coordinates per hairstyle
 // Measured from center column face cutout arch:
@@ -27,6 +28,7 @@ export const STYLE_HAIRLINE_V: Record<string, number> = {
   'sleek-pixie': 0.5312,
   'taper-fade': 0.5029,
   'textured-crop': 0.4219,
+  'volumetric-hairdeck': 0.50,
 };
 
 // Per-Hairstyle Cephalometric Seating & Volumetric Profile
@@ -116,6 +118,13 @@ export const STYLE_CALIBRATION: Record<string, StyleCalibration> = {
     curvatureDepth: 84,
     hasFlanks: true,
   },
+  'volumetric-hairdeck': {
+    yOffsetFactor: 0.04,
+    scaleFactor: 1.0,
+    zOffset: 0,
+    curvatureDepth: 70,
+    hasFlanks: false,
+  },
 };
 
 export const ASSET_FILENAME_MAP: Record<string, string> = {
@@ -130,6 +139,7 @@ export const ASSET_FILENAME_MAP: Record<string, string> = {
   'afro-taper': 'hair_afro_taper.png',
   'curly-fringe': 'hair_curly_fringe.png',
   'box-braids': 'hair_box_braids.png',
+  'volumetric-hairdeck': 'hair_deck.glb',
 };
 
 export const HAIR_STATIC_MAP: Record<string, any> = {
@@ -147,6 +157,9 @@ export const HAIR_STATIC_MAP: Record<string, any> = {
 };
 
 export function resolveHairAssetUrl(assetUri: any, styleId?: string): string | null {
+  if (styleId === 'volumetric-hairdeck') {
+    return '/models/hair_deck.glb';
+  }
   if (assetUri) {
     if (typeof assetUri === 'string' && (assetUri.startsWith('http') || assetUri.startsWith('data:') || assetUri.startsWith('/'))) {
       return assetUri;
@@ -319,11 +332,11 @@ export function updateHairMeshTransform(
   // Re-orthogonalize Y-Axis
   const yAxis = new THREE.Vector3().crossVectors(zAxis, xAxis).normalize();
 
-  // 2. Dynamic Anatomical Scale
+  // 2. Dynamic Anatomical Scale (snug cranial fit without helmet bloat)
   const currentHeadWidth = pScreenRight.distanceTo(pScreenLeft);
-  const refSpan = 118.0; // Calibrated bitemporal reference span for full lateral cranial coverage
+  const refSpan = 172.0; // Calibrated bitemporal reference span for snug cranial coverage
   const calibScale = calib?.scaleFactor ?? 1.0;
-  const scale = Math.max(0.40, Math.min(2.50, (currentHeadWidth / refSpan) * calibScale));
+  const scale = Math.max(0.40, Math.min(2.0, (currentHeadWidth / refSpan) * calibScale));
 
   // 3. Construct 4x4 Transform Matrix
   const rotationMatrix = new THREE.Matrix4();
@@ -367,6 +380,8 @@ export function ARHairCanvas3D({
   const hairMeshesRef = useRef<THREE.Mesh[]>([]);
   const hairMaterialsRef = useRef<THREE.MeshStandardMaterial[]>([]);
   const textureLoaderRef = useRef<THREE.TextureLoader | null>(null);
+  const gltfLoaderRef = useRef<GLTFLoader | null>(null);
+  const loadedGLBModelRef = useRef<THREE.Group | null>(null);
   const currentLoadedUriRef = useRef<string | null>(null);
 
   // Synchronize 6-DOF 3D transformations & dynamic motion
@@ -465,17 +480,82 @@ export function ARHairCanvas3D({
     volumetricHairGroupRef.current.position.set(0, yHairlineShift, 0);
   }, [activeStyleId]);
 
-  // Load and apply hair texture map and real-time normal map whenever hairstyle changes
+  // Load and apply hair texture map or true 3D GLB model whenever hairstyle changes
   useEffect(() => {
     if (Platform.OS !== 'web') return;
-
-    if (!textureLoaderRef.current) {
-      textureLoaderRef.current = new THREE.TextureLoader();
-    }
 
     const resolvedUri = resolveHairAssetUrl(hairAssetUri, activeStyleId);
     if (!resolvedUri || resolvedUri === currentLoadedUriRef.current) return;
     currentLoadedUriRef.current = resolvedUri;
+
+    // Handle True 3D GLB Hairstyle Models
+    if (resolvedUri.endsWith('.glb')) {
+      if (!gltfLoaderRef.current) {
+        gltfLoaderRef.current = new GLTFLoader();
+      }
+      // Hide 2D plane meshes
+      hairMeshesRef.current.forEach((mesh) => (mesh.visible = false));
+
+      gltfLoaderRef.current.load(
+        resolvedUri,
+        (gltf) => {
+          if (loadedGLBModelRef.current && volumetricHairGroupRef.current) {
+            volumetricHairGroupRef.current.remove(loadedGLBModelRef.current);
+            loadedGLBModelRef.current = null;
+          }
+
+          const model = gltf.scene;
+          const box = new THREE.Box3().setFromObject(model);
+          const size = new THREE.Vector3();
+          box.getSize(size);
+
+          // Anatomical calibration: normalize width to snug 175 Three.js units
+          const targetWidth = 175;
+          const s = size.x > 0 ? targetWidth / size.x : 1200;
+          model.scale.set(s, s, s);
+
+          // Seat root directly at Landmark 10 (Trichion hairline)
+          const center = new THREE.Vector3();
+          box.getCenter(center);
+          model.position.set(-center.x * s, -box.min.y * s - 12, -center.z * s);
+
+          model.traverse((child: any) => {
+            if (child.isMesh) {
+              child.castShadow = true;
+              child.receiveShadow = true;
+              if (child.material) {
+                child.material.side = THREE.DoubleSide;
+                child.material.transparent = true;
+                child.material.alphaTest = 0.35;
+                child.material.roughness = 0.50;
+                child.material.metalness = 0.05;
+                child.material.needsUpdate = true;
+              }
+            }
+          });
+
+          loadedGLBModelRef.current = model;
+          if (volumetricHairGroupRef.current) {
+            volumetricHairGroupRef.current.add(model);
+          }
+          console.log('[3D Hair] True 3D GLB model successfully mounted to cranial basis.');
+        },
+        undefined,
+        (err) => console.warn('[3D Hair] Failed to load GLB model:', err)
+      );
+      return;
+    }
+
+    // Handle 2D Hairstyle Textures
+    if (loadedGLBModelRef.current && volumetricHairGroupRef.current) {
+      volumetricHairGroupRef.current.remove(loadedGLBModelRef.current);
+      loadedGLBModelRef.current = null;
+    }
+    hairMeshesRef.current.forEach((mesh) => (mesh.visible = true));
+
+    if (!textureLoaderRef.current) {
+      textureLoaderRef.current = new THREE.TextureLoader();
+    }
 
     const applyTextureWithNormalMap = (texture: THREE.Texture, imageObj?: HTMLImageElement) => {
       texture.colorSpace = THREE.SRGBColorSpace;
@@ -498,7 +578,7 @@ export function ARHairCanvas3D({
         mat.map = texture;
         if (normalMap) {
           mat.normalMap = normalMap;
-          mat.normalScale = new THREE.Vector2(0.55, 0.55);
+          mat.normalScale = new THREE.Vector2(0.20, 0.20);
         }
         mat.needsUpdate = true;
       });
@@ -578,9 +658,9 @@ export function ARHairCanvas3D({
     const geometries: THREE.BufferGeometry[] = [];
     const meshes: THREE.Mesh[] = [];
 
-    // Expanded lateral and vertical cranial coverage: covers natural hair from ear to ear
-    const hairWidth = 345;
-    const hairHeight = 290;
+    // Snug anatomical cranial dimensions (eliminates oversized bloated helmet)
+    const hairWidth = 205;
+    const hairHeight = 175;
     const calib = STYLE_CALIBRATION[activeStyleId] || STYLE_CALIBRATION['classic-quiff'];
 
     // Parametric 3D Cranial Geometry Generator

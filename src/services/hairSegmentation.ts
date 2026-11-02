@@ -314,8 +314,13 @@ class HairSegmentationService {
     // Process suppression strictly above ear level / forehead boundary
     const processMaxY = Math.min(h, Math.floor(earLevelY));
     const processMinY = Math.max(0, Math.floor(topEnvelope - 40));
-
     for (let y = processMinY; y < processMaxY; y++) {
+      // ABSOLUTE ZERO-IDENTITY-SWAPPING RULE:
+      // Never touch any pixels near or below the Trichion hairline (forehead, glasses, eyes, nose, face)
+      if (y >= (trichionY - 8)) {
+        continue;
+      }
+
       const rowOffset = y * w;
       const maskY = Math.min(this.maskH - 1, Math.floor(y * maskScaleY));
       const maskRowOffset = maskY * this.maskW;
@@ -326,8 +331,8 @@ class HairSegmentationService {
         const g = px[idx + 1];
         const b = px[idx + 2];
 
-        // STRICT MANDATE: Never touch face skin below Trichion
-        if (y >= trichionY && isSkinPixel(r, g, b)) {
+        // Never touch skin pixels
+        if (isSkinPixel(r, g, b)) {
           continue;
         }
 
@@ -338,42 +343,32 @@ class HairSegmentationService {
           const cat = this.latestCategoryMask![maskRowOffset + maskX];
           // Category 1 is hair in selfie_multiclass
           isNaturalHair = (cat === 1);
-        } else {
-          // Adaptive Chrominance/Luminance matting fallback:
-          // Hair is non-skin with low-to-medium luminance above the face
-          if (!isSkinPixel(r, g, b)) {
-            const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-            if (lum < 85) {
-              isNaturalHair = true;
-            }
-          }
         }
 
         if (!isNaturalHair) continue;
 
-        // Zone 1: Protruding Outer Hair (outside the new hairstyle's envelope)
+        // Zone 1: Protruding Outer Hair (strictly above skull and outside haircut envelope)
         const isOutsideLeft = x < leftEnvelope;
         const isOutsideRight = x > rightEnvelope;
         const isOutsideTop = y < topEnvelope;
 
         if (isOutsideLeft || isOutsideRight || isOutsideTop) {
-          // Calculate distance to haircut boundary for smooth anti-aliased edge
           let dist = 0;
           if (isOutsideLeft) dist = Math.max(dist, leftEnvelope - x);
           if (isOutsideRight) dist = Math.max(dist, x - rightEnvelope);
           if (isOutsideTop) dist = Math.max(dist, topEnvelope - y);
 
-          const alpha = Math.min(1.0, dist / 18.0);
+          const alpha = Math.min(0.85, dist / 24.0);
           px[idx]     = Math.round(r * (1 - alpha) + bgR * alpha);
           px[idx + 1] = Math.round(g * (1 - alpha) + bgG * alpha);
           px[idx + 2] = Math.round(b * (1 - alpha) + bgB * alpha);
-        } else if (isShortStyle && y < trichionY) {
+        } else if (isShortStyle) {
           // Zone 2: Scalp Dome Under Short Styles (buzz-cut, textured-crop, taper-fade)
-          // Neutralize conflicting old part lines / strays under the augmented hair
-          const scalpToneR = Math.round(skinR * 0.45 + 30 * 0.55);
-          const scalpToneG = Math.round(skinG * 0.45 + 30 * 0.55);
-          const scalpToneB = Math.round(skinB * 0.45 + 32 * 0.55);
-          const blendFactor = 0.40;
+          // Soft scalp neutralization directly under the 3D crown
+          const scalpToneR = Math.round(skinR * 0.40 + 25 * 0.60);
+          const scalpToneG = Math.round(skinG * 0.40 + 25 * 0.60);
+          const scalpToneB = Math.round(skinB * 0.40 + 28 * 0.60);
+          const blendFactor = 0.35;
 
           px[idx]     = Math.round(r * (1 - blendFactor) + scalpToneR * blendFactor);
           px[idx + 1] = Math.round(g * (1 - blendFactor) + scalpToneG * blendFactor);
