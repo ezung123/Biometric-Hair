@@ -90,6 +90,11 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
       landmarks: undefined,
     });
 
+    const [videoDimensions, setVideoDimensions] = useState<{ width: number; height: number }>({
+      width: 640,
+      height: 480,
+    });
+
     const lastBoundaryRef = useRef<{ x: number; y: number; time: number }>({
       x: 50.0,
       y: 22.0,
@@ -148,6 +153,9 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
         video.autoplay = true;
         video.srcObject = stream;
         video.onloadedmetadata = () => {
+          if (video.videoWidth > 0 && video.videoHeight > 0) {
+            setVideoDimensions({ width: video.videoWidth, height: video.videoHeight });
+          }
           video.play().catch((e) => console.log('[Camera] Autoplay waiting:', e));
         };
         video.play().catch(() => {});
@@ -528,8 +536,8 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
             rollRad={boundaryState.rollRad}
             swayX={boundaryState.swayX}
             landmarks={boundaryState.landmarks}
-            videoWidth={videoRef.current?.videoWidth || 1280}
-            videoHeight={videoRef.current?.videoHeight || 720}
+            videoWidth={videoDimensions.width}
+            videoHeight={videoDimensions.height}
             isMirrored={true}
             visible={true}
           />
