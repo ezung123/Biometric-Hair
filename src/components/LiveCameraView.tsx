@@ -23,6 +23,7 @@ import { BiometricOverlay } from './BiometricOverlay';
 import { ARHairCanvas3D } from './ARHairCanvas3D';
 import { initMediaPipe, trackHeadPose3D } from '@/services/mediapipeFaceTracker';
 import { detectHairlineDecisionBoundary } from '@/services/hairlineDetector';
+import { hairSegmenter } from '@/services/hairSegmentation';
 import type { FacialMetrics } from '@/types';
 
 export interface LiveCameraViewRef {
@@ -97,6 +98,8 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
     const hairPhysicsVelocity = useRef<number>(0);
 
     const videoRef = useRef<HTMLVideoElement | null>(null);
+    const feedCanvasRef = useRef<HTMLCanvasElement | null>(null);
+    const renderAnimFrameRef = useRef<number | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const trackingCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const trackingIntervalRef = useRef<any>(null);
@@ -167,8 +170,9 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
       if (Platform.OS !== 'web') return;
 
       setCameraPermissionError(false);
-      // Pre-warm MediaPipe FaceLandmarker pipeline
+      // Pre-warm MediaPipe FaceLandmarker and Multi-Class Hair Segmenter pipelines
       initMediaPipe().catch(() => {});
+      hairSegmenter.initialize().catch(() => {});
 
       try {
         const stream = await requestWebcamStream();
@@ -185,6 +189,10 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
     }
 
     function stopCamera() {
+      if (renderAnimFrameRef.current) {
+        cancelAnimationFrame(renderAnimFrameRef.current);
+        renderAnimFrameRef.current = null;
+      }
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
@@ -277,6 +285,67 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
       };
     }, [hasCameraStream, cameraEnabled, windowW]);
 
+    // Real-Time Live Feed Rendering with Natural Hair Suppression
+    useEffect(() => {
+      if (!hasCameraStream || !cameraEnabled || Platform.OS !== 'web') {
+        if (renderAnimFrameRef.current) {
+          cancelAnimationFrame(renderAnimFrameRef.current);
+          renderAnimFrameRef.current = null;
+        }
+        return;
+      }
+
+      let isActive = true;
+
+      const renderLoop = () => {
+        if (!isActive) return;
+
+        const video = videoRef.current;
+        const canvas = feedCanvasRef.current;
+
+        if (video && canvas && !video.paused && !video.ended && video.videoWidth > 0) {
+          if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+          }
+
+          const ctx = canvas.getContext('2d', { willReadFrequently: true });
+          if (ctx) {
+            // Draw mirrored camera feed (Snapchat / Instagram selfie orientation)
+            ctx.save();
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            ctx.restore();
+
+            // Suppress protruding natural hair & prep cranial scalp when hairstyle is chosen
+            if (showAugmentation && activeStyleId) {
+              hairSegmenter.suppressNaturalHairLive(canvas, {
+                hairlinePctY: boundaryState.hairlinePctY,
+                centerPctX: boundaryState.centerPctX,
+                skullWidthPx: boundaryState.skullWidthPx,
+                styleId: activeStyleId,
+                landmarks: boundaryState.landmarks,
+                isMirrored: true,
+              });
+            }
+          }
+        }
+
+        renderAnimFrameRef.current = requestAnimationFrame(renderLoop);
+      };
+
+      renderAnimFrameRef.current = requestAnimationFrame(renderLoop);
+
+      return () => {
+        isActive = false;
+        if (renderAnimFrameRef.current) {
+          cancelAnimationFrame(renderAnimFrameRef.current);
+          renderAnimFrameRef.current = null;
+        }
+      };
+    }, [hasCameraStream, cameraEnabled, showAugmentation, activeStyleId, boundaryState]);
+
     // 6-DOF 3D Head Detection on Frozen Photo Snapshot or Uploaded Image
     useEffect(() => {
       if (!frozenImageUri || Platform.OS !== 'web') return;
@@ -326,6 +395,16 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
 
     useImperativeHandle(ref, () => ({
       captureSnapshot: () => {
+        if (Platform.OS === 'web' && feedCanvasRef.current && hasCameraStream) {
+          try {
+            const canvas = feedCanvasRef.current;
+            if (canvas.width > 0 && canvas.height > 0) {
+              return canvas.toDataURL('image/jpeg', 0.95);
+            }
+          } catch (e) {
+            console.warn('[Camera] Feed canvas snapshot capture error:', e);
+          }
+        }
         if (Platform.OS === 'web' && videoRef.current && hasCameraStream) {
           try {
             const video = videoRef.current;
@@ -342,7 +421,7 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
               }
             }
           } catch (e) {
-            console.warn('[Camera] Snapshot capture error:', e);
+            console.warn('[Camera] Fallback snapshot capture error:', e);
           }
         }
         return null;
@@ -354,7 +433,7 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
 
     return (
       <View style={styles.container}>
-        {/* ── 1. Video Element (Mirrored Hardware Stream) ── */}
+        {/* ── 1. Video Element (Hardware MediaStream Decoder) ── */}
         {Platform.OS === 'web' && cameraEnabled && (
           <video
             ref={setVideoElement}
@@ -365,10 +444,26 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
               position: 'absolute',
               top: 0,
               left: 0,
+              width: 1,
+              height: 1,
+              opacity: 0,
+              pointerEvents: 'none',
+              zIndex: 1,
+            }}
+          />
+        )}
+
+        {/* ── 2. Live Feed Canvas with Real-Time Natural Hair Suppression ── */}
+        {Platform.OS === 'web' && cameraEnabled && (
+          <canvas
+            ref={feedCanvasRef}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
               width: '100%',
               height: '100%',
               objectFit: 'cover',
-              transform: 'scaleX(-1)', // Mirror front camera like Snapchat
               zIndex: 2,
               display: (frozenImageUri || !hasCameraStream) ? 'none' : 'block',
               backgroundColor: '#000000',
