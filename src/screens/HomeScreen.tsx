@@ -149,7 +149,7 @@ export default function HomeScreen() {
   // States
   const [cameraEnabled, setCameraEnabled] = useState(true);
   const [hudVisible, setHudVisible] = useState(true);
-  const [activeLensId, setActiveLensId] = useState<string>('textured-crop');
+  const [activeLensId, setActiveLensId] = useState<string>('volumetric-hairdeck');
   const [activePresetIdx, setActivePresetIdx] = useState(0);
   const [capturedPhotoUri, setCapturedPhotoUri] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);

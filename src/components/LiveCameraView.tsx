@@ -326,8 +326,8 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             ctx.restore();
 
-            // Suppress protruding natural hair & prep cranial scalp when hairstyle is chosen
-            if (showAugmentation && activeStyleId) {
+            // Suppress protruding natural hair for short 2D styles only when face landmarks are active
+            if (showAugmentation && activeStyleId && activeStyleId !== 'volumetric-hairdeck' && boundaryState.landmarks) {
               hairSegmenter.suppressNaturalHairLive(canvas, {
                 hairlinePctY: boundaryState.hairlinePctY,
                 centerPctX: boundaryState.centerPctX,
