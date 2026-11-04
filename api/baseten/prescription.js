@@ -2,7 +2,7 @@ const BASETEN_API_KEY = process.env.BASETEN_API_KEY || '';
 const BASETEN_BASE_URL = process.env.BASETEN_BASE_URL || 'https://inference.baseten.co/v1';
 const BASETEN_MODEL = process.env.BASETEN_MODEL_ID || 'meta-models/muse-spark-open-1026';
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-App-Token');
@@ -88,4 +88,4 @@ Recommend volumetric haircut compensation and return strictly valid JSON matchin
       cautions: 'Maintain regular taper intervals to preserve neoclassical balance.',
     },
   });
-}
+};
