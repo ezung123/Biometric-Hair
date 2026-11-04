@@ -213,3 +213,4 @@ STRICT RULE: Rationale must be at most 2 sentences citing ONLY the exact measure
   // Fallback for unmatched routes
   return res.status(404).json({ error: `Not found: ${pathname}` });
 }
+
