@@ -83,7 +83,7 @@ export default function LearnScreen() {
             </View>
 
             <Text style={[styles.quickTip, { color: colors.textSecondary }]}>
-              💡 If your Upper Third &gt; 35%, a curtain fringe or textured crop visually lowers your hairline to restore the 33.3% canonical equilibrium.
+              Note: If your Upper Third &gt; 35%, a curtain fringe or textured crop visually lowers your hairline to restore the 33.3% canonical equilibrium.
             </Text>
           </View>
 
@@ -109,7 +109,7 @@ export default function LearnScreen() {
 
               <View style={[styles.morphCard, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
                 <Text style={[styles.morphTitle, { color: colors.text }]}>SQUARE</Text>
-                <Text style={[styles.morphRule, { color: colors.accentGreen }]}>✓ Soft waves &amp; curved lines</Text>
+                <Text style={[styles.morphRule, { color: colors.accentGreen }]}>✓ Soft waves & curved lines</Text>
                 <Text style={[styles.morphRuleBad, { color: colors.textMuted }]}>✕ Avoid boxy blunt edges</Text>
               </View>
 

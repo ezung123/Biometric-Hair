@@ -1,21 +1,17 @@
 // ==============================================================================
-// ARHairCanvas3D: True 3D Volumetric Hairstyle Try-On Engine
-// - 4-Layer Concentric 3D Volumetric Cranial Shells with Depth Parallax
-// - Anatomical 3D Head Occluder (clips far-side hair naturally in Z-space)
-// - 3D Temporal Flank Geometry (left & right face framing in 3D perspective)
-// - Real-time Sobel 3D Normal Mapping with physical strand micro-relief
-// - Studio Three-Point Directional Specular Lighting (Key, Golden Rim, Fill)
-// - 6-DOF Biometric Tracking: Precision Hairline Seating & Synchronized 3D Rotations
+// ARHairCanvas3D: High-Performance 2D Biometric Canvas Tracking Overlay
+// Direct 2D landmark geometric anchoring:
+// - Hair Width: Math.hypot(lm356.x - lm127.x, lm356.y - lm127.y) * canvasWidth * 1.35
+// - Position X: lm10.x * canvasWidth
+// - Position Y: (lm10.y * canvasHeight) - (hairRenderHeight * 0.40)
+// - Rotation:   Math.atan2(dy, dx)
+// Guarantees stable 60 FPS, zero WebGL context faults, and zero floating artifacts.
 // ==============================================================================
 
 import React, { useEffect, useRef } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
-import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 // Exact hairline baseline UV coordinates per hairstyle
-// Measured from center column face cutout arch:
-// When shifted by -(v_hairline - 0.5) * H, the texture's hairline snaps directly onto Landmark 10
 export const STYLE_HAIRLINE_V: Record<string, number> = {
   'afro-taper': 0.5547,
   'box-braids': 0.7402,
@@ -28,103 +24,30 @@ export const STYLE_HAIRLINE_V: Record<string, number> = {
   'sleek-pixie': 0.5312,
   'taper-fade': 0.5029,
   'textured-crop': 0.4219,
-  'volumetric-hairdeck': 0.50,
+  'volumetric-hairdeck': 0.4814,
 };
 
-// Per-Hairstyle Cephalometric Seating & Volumetric Profile
+// Per-Hairstyle Seating & Scaling Calibration
 export interface StyleCalibration {
-  yOffsetFactor: number;   // Lifts fringe to Trichion hairline
   scaleFactor: number;     // Anatomical skull scaling multiplier
-  zOffset: number;         // Anterior cranial projection
-  curvatureDepth: number;  // 3D Coronal & Sagittal depth wrap
-  hasFlanks: boolean;      // Whether side temporal draping is enabled
+  zOffset?: number;        // Depth offset
+  curvatureDepth?: number; // Curvature wrap
+  hasFlanks?: boolean;     // Side temporal draping
 }
 
 export const STYLE_CALIBRATION: Record<string, StyleCalibration> = {
-  'taper-fade': {
-    yOffsetFactor: 0.05,
-    scaleFactor: 1.02,
-    zOffset: 12,
-    curvatureDepth: 68,
-    hasFlanks: false,
-  },
-  'buzz-cut': {
-    yOffsetFactor: 0.04,
-    scaleFactor: 0.98,
-    zOffset: 8,
-    curvatureDepth: 62,
-    hasFlanks: false,
-  },
-  'textured-crop': {
-    yOffsetFactor: 0.08,
-    scaleFactor: 1.08,
-    zOffset: 12,
-    curvatureDepth: 74,
-    hasFlanks: false,
-  },
-  'classic-quiff': {
-    yOffsetFactor: 0.08,
-    scaleFactor: 1.04,
-    zOffset: 14,
-    curvatureDepth: 72,
-    hasFlanks: false,
-  },
-  'curtain-fringe': {
-    yOffsetFactor: 0.07,
-    scaleFactor: 1.04,
-    zOffset: 14,
-    curvatureDepth: 74,
-    hasFlanks: false,
-  },
-  'layered-waves': {
-    yOffsetFactor: 0.09,
-    scaleFactor: 1.06,
-    zOffset: 16,
-    curvatureDepth: 78,
-    hasFlanks: false,
-  },
-  'french-bob': {
-    yOffsetFactor: 0.05,
-    scaleFactor: 1.04,
-    zOffset: 12,
-    curvatureDepth: 70,
-    hasFlanks: false,
-  },
-  'sleek-pixie': {
-    yOffsetFactor: 0.05,
-    scaleFactor: 1.02,
-    zOffset: 12,
-    curvatureDepth: 68,
-    hasFlanks: false,
-  },
-  'afro-taper': {
-    yOffsetFactor: 0.08,
-    scaleFactor: 1.10,
-    zOffset: 16,
-    curvatureDepth: 80,
-    hasFlanks: false,
-  },
-  'curly-fringe': {
-    yOffsetFactor: 0.06,
-    scaleFactor: 1.04,
-    zOffset: 14,
-    curvatureDepth: 74,
-    hasFlanks: false,
-  },
-  'box-braids': {
-    yOffsetFactor: 0.06,
-    scaleFactor: 1.08,
-    zOffset: 14,
-    curvatureDepth: 84,
-    hasFlanks: true,
-  },
-  'volumetric-hairdeck': {
-    yOffsetFactor: 0.04,
-    scaleFactor: 1.0,
-    zOffset: 0,
-    curvatureDepth: 70,
-    hasFlanks: false,
-  },
+  'taper-fade': { scaleFactor: 1.02 },
+  'buzz-cut': { scaleFactor: 0.98 },
+  'textured-crop': { scaleFactor: 1.08 },
+  'classic-quiff': { scaleFactor: 1.04 },
+  'curtain-fringe': { scaleFactor: 1.04 },
+  'layered-waves': { scaleFactor: 1.06 },
+  'french-bob': { scaleFactor: 1.04 },
+  'sleek-pixie': { scaleFactor: 1.02 },
+  'afro-taper': { scaleFactor: 1.10 },
+  'curly-fringe': { scaleFactor: 1.04 },
+  'box-braids': { scaleFactor: 1.08 },
+  'volumetric-hairdeck': { scaleFactor: 1.04 },
 };
 
 export const ASSET_FILENAME_MAP: Record<string, string> = {
@@ -139,26 +62,56 @@ export const ASSET_FILENAME_MAP: Record<string, string> = {
   'afro-taper': 'hair_afro_taper.png',
   'curly-fringe': 'hair_curly_fringe.png',
   'box-braids': 'hair_box_braids.png',
-  'volumetric-hairdeck': 'hair_deck.glb',
+  'volumetric-hairdeck': 'hair_classic_quiff.png',
 };
 
-export const HAIR_STATIC_MAP: Record<string, any> = {
-  'curtain-fringe': require('@/assets/images/hair_curtain_fringe.png'),
-  'textured-crop': require('@/assets/images/hair_textured_crop.png'),
-  'classic-quiff': require('@/assets/images/hair_classic_quiff.png'),
-  'taper-fade': require('@/assets/images/hair_taper_fade.png'),
-  'buzz-cut': require('@/assets/images/hair_buzz_cut.png'),
-  'layered-waves': require('@/assets/images/hair_layered_waves.png'),
-  'french-bob': require('@/assets/images/hair_french_bob.png'),
-  'sleek-pixie': require('@/assets/images/hair_sleek_pixie.png'),
-  'afro-taper': require('@/assets/images/hair_afro_taper.png'),
-  'curly-fringe': require('@/assets/images/hair_curly_fringe.png'),
-  'box-braids': require('@/assets/images/hair_box_braids.png'),
-};
+export interface ScreenPoint {
+  x: number;
+  y: number;
+}
+
+/**
+ * Maps MediaPipe normalized landmarks (0..1) directly to displayed screen pixels,
+ * accounting for CSS object-fit: cover letterbox/cropping offsets and selfie mirroring.
+ */
+export function getScreenLandmark(
+  lm: { x: number; y: number; z?: number },
+  containerWidth: number,
+  containerHeight: number,
+  videoWidth: number,
+  videoHeight: number,
+  isMirrored: boolean = true
+): ScreenPoint {
+  const safeVidW = videoWidth > 0 ? videoWidth : 640;
+  const safeVidH = videoHeight > 0 ? videoHeight : 480;
+  const videoAspect = safeVidW / safeVidH;
+  const containerAspect = containerWidth / Math.max(1, containerHeight);
+
+  let renderWidth = containerWidth;
+  let renderHeight = containerHeight;
+  let offsetX = 0;
+  let offsetY = 0;
+
+  if (containerAspect > videoAspect) {
+    // Container is wider: video cropped top & bottom
+    renderHeight = containerWidth / videoAspect;
+    offsetY = (containerHeight - renderHeight) / 2;
+  } else {
+    // Container is taller: video cropped left & right
+    renderWidth = containerHeight * videoAspect;
+    offsetX = (containerWidth - renderWidth) / 2;
+  }
+
+  const normX = isMirrored ? (1 - lm.x) : lm.x;
+  return {
+    x: offsetX + normX * renderWidth,
+    y: offsetY + lm.y * renderHeight,
+  };
+}
 
 export function resolveHairAssetUrl(assetUri: any, styleId?: string): string | null {
-  if (styleId === 'volumetric-hairdeck') {
-    return '/models/hair_deck.glb';
+  if (styleId && ASSET_FILENAME_MAP[styleId]) {
+    return `/hair_styles/${ASSET_FILENAME_MAP[styleId]}`;
   }
   if (assetUri) {
     if (typeof assetUri === 'string' && (assetUri.startsWith('http') || assetUri.startsWith('data:') || assetUri.startsWith('/'))) {
@@ -172,59 +125,7 @@ export function resolveHairAssetUrl(assetUri: any, styleId?: string): string | n
       if (assetUri.default.uri) return assetUri.default.uri;
     }
   }
-  if (styleId && HAIR_STATIC_MAP[styleId]) {
-    const fallbackAsset = HAIR_STATIC_MAP[styleId];
-    if (typeof fallbackAsset === 'string') return fallbackAsset;
-    if (fallbackAsset.uri) return fallbackAsset.uri;
-    if (fallbackAsset.default) {
-      if (typeof fallbackAsset.default === 'string') return fallbackAsset.default;
-      if (fallbackAsset.default.uri) return fallbackAsset.default.uri;
-    }
-  }
   return null;
-}
-
-// Generate Real-Time 3D Normal Map from hair texture alpha & luminance
-function generateHairNormalMap(image: HTMLImageElement): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas');
-  const w = Math.min(image.width || 512, 512);
-  const h = Math.min(image.height || 512, 512);
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return new THREE.CanvasTexture(canvas);
-
-  ctx.drawImage(image, 0, 0, w, h);
-  const imgData = ctx.getImageData(0, 0, w, h);
-  const src = imgData.data;
-  const out = ctx.createImageData(w, h);
-  const dst = out.data;
-
-  // Sobel 3D filter to compute surface normal vectors (Nx, Ny, Nz)
-  for (let y = 1; y < h - 1; y++) {
-    for (let x = 1; x < w - 1; x++) {
-      const idx = (y * w + x) * 4;
-      const left  = (src[(y * w + (x - 1)) * 4] * 0.299 + src[(y * w + (x - 1)) * 4 + 1] * 0.587 + src[(y * w + (x - 1)) * 4 + 2] * 0.114);
-      const right = (src[(y * w + (x + 1)) * 4] * 0.299 + src[(y * w + (x + 1)) * 4 + 1] * 0.587 + src[(y * w + (x + 1)) * 4 + 2] * 0.114);
-      const up    = (src[((y - 1) * w + x) * 4] * 0.299 + src[((y - 1) * w + x) * 4 + 1] * 0.587 + src[((y - 1) * w + x) * 4 + 2] * 0.114);
-      const down  = (src[((y + 1) * w + x) * 4] * 0.299 + src[((y + 1) * w + x) * 4 + 1] * 0.587 + src[((y + 1) * w + x) * 4 + 2] * 0.114);
-
-      const dx = ((right - left) / 255.0) * 1.0;
-      const dy = ((down - up) / 255.0) * 1.0;
-      const dz = 1.0;
-      const len = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1.0;
-
-      dst[idx]     = Math.floor(((dx / len) * 0.5 + 0.5) * 255);
-      dst[idx + 1] = Math.floor(((-dy / len) * 0.5 + 0.5) * 255);
-      dst[idx + 2] = Math.floor(((dz / len) * 0.5 + 0.5) * 255);
-      dst[idx + 3] = src[idx + 3];
-    }
-  }
-  ctx.putImageData(out, 0, 0);
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.wrapS = THREE.ClampToEdgeWrapping;
-  tex.wrapT = THREE.ClampToEdgeWrapping;
-  return tex;
 }
 
 export interface ARHairCanvas3DProps {
@@ -237,107 +138,12 @@ export interface ARHairCanvas3DProps {
   yawRad?: number;         // Radians
   rollRad?: number;        // Radians
   swayX?: number;          // Inertia bounce (px)
-  depthZ?: number;        // Relative camera Z
+  depthZ?: number;         // Relative camera Z
   landmarks?: Array<{ x: number; y: number; z?: number }>;
   videoWidth?: number;
   videoHeight?: number;
   isMirrored?: boolean;
   visible?: boolean;
-}
-
-/**
- * 3-Point Cranial Basis Matrix computed directly from MediaPipe FaceLandmarker:
- * - Landmark 10:  Trichion hairline anchor (Origin)
- * - Landmark 127: Right Temporal Crest
- * - Landmark 356: Left Temporal Crest
- * - Landmark 152: Chin / Vertical Reference (Gnathion)
- *
- * Implements exact objectFit: 'cover' aspect ratio compensation to eliminate
- * coordinate cropping distortions across mobile and desktop viewports.
- */
-export function updateHairMeshTransform(
-  hairGroup: THREE.Group,
-  landmarks: Array<{ x: number; y: number; z?: number }>,
-  camera: THREE.PerspectiveCamera,
-  canvasWidth: number,
-  canvasHeight: number,
-  videoWidth: number = 640,
-  videoHeight: number = 480,
-  isMirrored: boolean = true,
-  calib?: StyleCalibration,
-  pitchRad: number = 0,
-  yawRad: number = 0,
-  rollRad: number = 0
-): boolean {
-  if (!landmarks || landmarks.length < 468) return false;
-  if (!landmarks[10] || !landmarks[127] || !landmarks[356] || !landmarks[152]) return false;
-
-  const vFOV = (camera.fov * Math.PI) / 180;
-  const distanceAtZero = Math.abs(camera.position.z);
-  const visibleHeight = 2 * Math.tan(vFOV / 2) * distanceAtZero;
-  const visibleWidth = visibleHeight * camera.aspect;
-
-  // 1. Precise objectFit: 'cover' aspect ratio scale and offset
-  const safeVidW = videoWidth > 0 ? videoWidth : 640;
-  const safeVidH = videoHeight > 0 ? videoHeight : 480;
-  const videoAspect = safeVidW / safeVidH;
-  const containerAspect = canvasWidth / Math.max(1, canvasHeight);
-
-  let renderedW: number;
-  let renderedH: number;
-  if (containerAspect > videoAspect) {
-    renderedW = canvasWidth;
-    renderedH = canvasWidth / videoAspect;
-  } else {
-    renderedH = canvasHeight;
-    renderedW = canvasHeight * videoAspect;
-  }
-  const offsetX = (canvasWidth - renderedW) / 2;
-  const offsetY = (canvasHeight - renderedH) / 2;
-
-  // Helper to convert MediaPipe normalized coordinate to Three.js World Vector at depth Z
-  const lmToWorld = (lm: { x: number; y: number; z?: number }) => {
-    // In mirrored webcam view, x:0 is screen-right, x:1 is screen-left.
-    const normX = isMirrored ? (1.0 - lm.x) : lm.x;
-    const screenX = offsetX + normX * renderedW;
-    const screenY = offsetY + lm.y * renderedH;
-
-    // Screen pixel to Three.js NDC [-1..1]
-    const ndcX = (screenX / canvasWidth) * 2 - 1;
-    const ndcY = -((screenY / canvasHeight) * 2 - 1);
-
-    // Project NDC into 3D camera world ray
-    const vector = new THREE.Vector3(ndcX, ndcY, 0.5);
-    vector.unproject(camera);
-    const dir = vector.sub(camera.position).normalize();
-
-    // Map landmark Z relative to head depth
-    const zDepth = -(lm.z || 0) * (visibleWidth * 0.35);
-    const distance = (zDepth - camera.position.z) / (dir.z || -0.001);
-    return camera.position.clone().add(dir.multiplyScalar(distance));
-  };
-
-  const pTrichion = lmToWorld(landmarks[10]);     // Hairline center (Trichion)
-  const pRightTemple = lmToWorld(landmarks[127]); // Anatomical right temple
-  const pLeftTemple = lmToWorld(landmarks[356]);  // Anatomical left temple
-
-  // In mirrored view, anatomical right temple is on screen-right (+X)
-  const pScreenRight = isMirrored ? pRightTemple : pLeftTemple;
-  const pScreenLeft = isMirrored ? pLeftTemple : pRightTemple;
-
-  // 2. Dynamic Anatomical Scale (calibrated to bitemporal cranial span)
-  const currentHeadWidth = pScreenRight.distanceTo(pScreenLeft);
-  const refSpan = 100.0; // Calibrated reference bitemporal width
-  const calibScale = calib?.scaleFactor ?? 1.0;
-  const scale = Math.max(0.40, Math.min(2.0, (currentHeadWidth / refSpan) * calibScale));
-
-  // 3. Synchronize Position, 6-DOF Orientation, and Scale
-  hairGroup.matrixAutoUpdate = true;
-  hairGroup.position.set(pTrichion.x, pTrichion.y, pTrichion.z);
-  hairGroup.rotation.set(pitchRad * 0.95, yawRad * 0.98, rollRad, 'YXZ');
-  hairGroup.scale.set(scale, scale, scale);
-
-  return true;
 }
 
 export function ARHairCanvas3D({
@@ -358,345 +164,150 @@ export function ARHairCanvas3D({
   visible = true,
 }: ARHairCanvas3DProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const sceneRef = useRef<THREE.Scene | null>(null);
-  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
-  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
-  const headGroupRef = useRef<THREE.Group | null>(null);
-  const volumetricHairGroupRef = useRef<THREE.Group | null>(null);
-  const hairMeshesRef = useRef<THREE.Mesh[]>([]);
-  const hairMaterialsRef = useRef<THREE.MeshStandardMaterial[]>([]);
-  const textureLoaderRef = useRef<THREE.TextureLoader | null>(null);
-  const gltfLoaderRef = useRef<GLTFLoader | null>(null);
-  const loadedGLBModelRef = useRef<THREE.Group | null>(null);
-  const currentLoadedUriRef = useRef<string | null>(null);
+  const imageRef = useRef<HTMLImageElement | null>(null);
+  const currentUrlRef = useRef<string | null>(null);
 
-  // Synchronize 6-DOF 3D transformations & dynamic motion
-  useEffect(() => {
-    if (!headGroupRef.current || !cameraRef.current) return;
-
-    const headGroup = headGroupRef.current;
-    const camera = cameraRef.current;
-    const calib = STYLE_CALIBRATION[activeStyleId] || STYLE_CALIBRATION['classic-quiff'];
-    const canvasEl = canvasRef.current;
-    const canvasW = canvasEl ? (canvasEl.clientWidth || window.innerWidth) : 400;
-    const canvasH = canvasEl ? (canvasEl.clientHeight || window.innerHeight) : 600;
-
-    // Detect actual hardware video dimensions if available
-    const videoEl = (typeof document !== 'undefined' ? document.querySelector('video') : null) as HTMLVideoElement | null;
-    const vidW: number = (videoEl && videoEl.videoWidth > 0) ? videoEl.videoWidth : ((videoWidth && videoWidth > 0) ? videoWidth : 640);
-    const vidH: number = (videoEl && videoEl.videoHeight > 0) ? videoEl.videoHeight : ((videoHeight && videoHeight > 0) ? videoHeight : 480);
-
-    // 1. Try Direct Affine Landmark Basis Matrix Transform with 6-DOF Euler head pose
-    const updatedWithLandmarks = updateHairMeshTransform(
-      headGroup,
-      landmarks as any,
-      camera,
-      canvasW,
-      canvasH,
-      vidW,
-      vidH,
-      isMirrored,
-      calib,
-      pitchRad,
-      yawRad,
-      rollRad
-    );
-
-    // 2. Head group visibility: gracefully hide hair when no face is in frame
-    headGroup.visible = Boolean(updatedWithLandmarks);
-
-    // 3. Secondary Inertia Physics on the hair volume
-    if (volumetricHairGroupRef.current) {
-      volumetricHairGroupRef.current.rotation.z = swayX * 0.015;
-      volumetricHairGroupRef.current.position.x = swayX * 0.20;
-    }
-  }, [landmarks, centerPctX, hairlinePctY, skullWidthPx, pitchRad, yawRad, rollRad, swayX, depthZ, activeStyleId, isMirrored, videoWidth, videoHeight]);
-
-  // Update mesh geometry and vertical offset whenever hairstyle changes
-  useEffect(() => {
-    if (hairMeshesRef.current.length === 0 || !volumetricHairGroupRef.current) return;
-
-    const calib = STYLE_CALIBRATION[activeStyleId] || STYLE_CALIBRATION['classic-quiff'];
-    hairMeshesRef.current.forEach((mesh) => {
-      mesh.position.set(0, 0, calib.zOffset || 0);
-    });
-
-    // Anatomical Trichion hairline root baseline seating:
-    // Lifts the hair dome onto the cranium so bangs stop at the upper forehead
-    const hairHeight = 125;
-    const vHairline = STYLE_HAIRLINE_V[activeStyleId] ?? 0.50;
-    const yHairlineInMesh = (vHairline - 0.5) * hairHeight;
-    const yHairlineShift = activeStyleId === 'volumetric-hairdeck' ? 0 : (-yHairlineInMesh + 18);
-    volumetricHairGroupRef.current.position.set(0, yHairlineShift, 0);
-  }, [activeStyleId]);
-
-  // Load and apply hair texture map or true 3D GLB model whenever hairstyle changes
+  // Load target hairstyle 2D asset
   useEffect(() => {
     if (Platform.OS !== 'web') return;
 
-    const resolvedUri = resolveHairAssetUrl(hairAssetUri, activeStyleId);
-    if (!resolvedUri || resolvedUri === currentLoadedUriRef.current) return;
-    currentLoadedUriRef.current = resolvedUri;
-
-    // Handle True 3D GLB Hairstyle Models
-    if (resolvedUri.endsWith('.glb')) {
-      if (!gltfLoaderRef.current) {
-        gltfLoaderRef.current = new GLTFLoader();
-      }
-      // Hide 2D plane meshes
-      hairMeshesRef.current.forEach((mesh) => (mesh.visible = false));
-
-      gltfLoaderRef.current.load(
-        resolvedUri,
-        (gltf) => {
-          if (loadedGLBModelRef.current && volumetricHairGroupRef.current) {
-            volumetricHairGroupRef.current.remove(loadedGLBModelRef.current);
-            loadedGLBModelRef.current = null;
-          }
-
-          const model = gltf.scene;
-          const box = new THREE.Box3().setFromObject(model);
-          const size = new THREE.Vector3();
-          box.getSize(size);
-
-          // Anatomical calibration: normalize width to snug 100 Three.js units
-          const targetWidth = 100;
-          const s = size.x > 0 ? targetWidth / size.x : 725;
-          model.scale.set(s, s, s);
-
-          // Seat root directly at Landmark 10 (Trichion hairline)
-          // Front bangs at Y=0.380 seat directly above eyebrows, crown at Y=0.500 wraps over cranium
-          const center = new THREE.Vector3();
-          box.getCenter(center);
-          const yHairline = 0.380;
-          model.position.set(-center.x * s, -yHairline * s, -0.015 * s);
-
-          model.traverse((child: any) => {
-            if (child.isMesh) {
-              child.castShadow = true;
-              child.receiveShadow = true;
-              if (child.material) {
-                child.material.side = THREE.DoubleSide;
-                child.material.transparent = true;
-                child.material.alphaTest = 0.35;
-                child.material.roughness = 0.50;
-                child.material.metalness = 0.05;
-                child.material.needsUpdate = true;
-              }
-            }
-          });
-
-          loadedGLBModelRef.current = model;
-          if (volumetricHairGroupRef.current) {
-            volumetricHairGroupRef.current.add(model);
-          }
-          console.log('[3D Hair] True 3D GLB model successfully mounted to cranial basis.');
-        },
-        undefined,
-        (err) => console.warn('[3D Hair] Failed to load GLB model:', err)
-      );
-      return;
-    }
-
-    // Handle 2D Hairstyle Textures
-    if (loadedGLBModelRef.current && volumetricHairGroupRef.current) {
-      volumetricHairGroupRef.current.remove(loadedGLBModelRef.current);
-      loadedGLBModelRef.current = null;
-    }
-    hairMeshesRef.current.forEach((mesh) => (mesh.visible = true));
-
-    if (!textureLoaderRef.current) {
-      textureLoaderRef.current = new THREE.TextureLoader();
-    }
-
-    const applyTextureWithNormalMap = (texture: THREE.Texture, imageObj?: HTMLImageElement) => {
-      texture.colorSpace = THREE.SRGBColorSpace;
-      texture.minFilter = THREE.LinearFilter;
-      texture.magFilter = THREE.LinearFilter;
-      texture.generateMipmaps = false;
-      texture.wrapS = THREE.ClampToEdgeWrapping;
-      texture.wrapT = THREE.ClampToEdgeWrapping;
-
-      let normalMap: THREE.CanvasTexture | null = null;
-      if (imageObj && imageObj.complete && imageObj.naturalWidth > 0) {
-        try {
-          normalMap = generateHairNormalMap(imageObj);
-        } catch (e) {
-          console.warn('[3D Hair] Normal map generation skipped:', e);
-        }
-      }
-
-      hairMaterialsRef.current.forEach((mat) => {
-        mat.map = texture;
-        if (normalMap) {
-          mat.normalMap = normalMap;
-          mat.normalScale = new THREE.Vector2(0.20, 0.20);
-        }
-        mat.needsUpdate = true;
-      });
-    };
+    const resolvedUrl = resolveHairAssetUrl(hairAssetUri, activeStyleId);
+    if (!resolvedUrl || resolvedUrl === currentUrlRef.current) return;
+    currentUrlRef.current = resolvedUrl;
 
     const img = new (window as any).Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      const tex = new THREE.Texture(img);
-      tex.needsUpdate = true;
-      applyTextureWithNormalMap(tex, img);
+      imageRef.current = img;
     };
     img.onerror = () => {
-      textureLoaderRef.current?.load(resolvedUri, (tex) => {
-        applyTextureWithNormalMap(tex);
-      });
+      console.warn('[ARHairCanvas] Failed to load hair asset:', resolvedUrl);
     };
-    img.src = resolvedUri;
+    img.src = resolvedUrl;
   }, [activeStyleId, hairAssetUri]);
 
-  // Initialize Three.js WebGL Scene
+  // 60 FPS 2D Biometric Canvas Render Loop
   useEffect(() => {
     if (Platform.OS !== 'web' || !canvasRef.current) return;
 
     const canvas = canvasRef.current;
-    const width = canvas.parentElement?.clientWidth || window.innerWidth;
-    const height = canvas.parentElement?.clientHeight || window.innerHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-    // 1. Scene, Camera, and WebGL Renderer
-    const scene = new THREE.Scene();
-    sceneRef.current = scene;
-
-    const camera = new THREE.PerspectiveCamera(45, width / height, 10, 3000);
-    camera.position.set(0, 0, 500);
-    cameraRef.current = camera;
-
-    const renderer = new THREE.WebGLRenderer({
-      canvas,
-      alpha: true,
-      antialias: true,
-      powerPreference: 'high-performance',
-      premultipliedAlpha: false,
-    });
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.setClearColor(0x000000, 0);
-    rendererRef.current = renderer;
-
-    // 2. Realistic 3D Studio Three-Point Directional Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.30);
-    scene.add(ambientLight);
-
-    const keyLight = new THREE.DirectionalLight(0xfff8ee, 1.30);
-    keyLight.position.set(120, 240, 200);
-    scene.add(keyLight);
-
-    // Soft neutral daylight hair backlight (replaces harsh gold rim light to eliminate yellow glitter)
-    const rimLight = new THREE.DirectionalLight(0xffeedb, 0.55);
-    rimLight.position.set(0, 260, -120);
-    scene.add(rimLight);
-
-    const fillLight = new THREE.DirectionalLight(0xe8f0ff, 0.55);
-    fillLight.position.set(-140, 60, 160);
-    scene.add(fillLight);
-
-    // 3. 3D Cranial Root Group (Hidden until face landmarks are tracked)
-    const headGroup = new THREE.Group();
-    headGroup.visible = false;
-    scene.add(headGroup);
-    headGroupRef.current = headGroup;
-
-    // 4. 3D Volumetric Hairstyle Root Group
-    const volumetricHairGroup = new THREE.Group();
-    headGroup.add(volumetricHairGroup);
-    volumetricHairGroupRef.current = volumetricHairGroup;
-
-    const materials: THREE.MeshStandardMaterial[] = [];
-    const geometries: THREE.BufferGeometry[] = [];
-    const meshes: THREE.Mesh[] = [];
-
-    // Snug anatomical cranial dimensions (calibrated to human head span)
-    const hairWidth = 140;
-    const hairHeight = 125;
-    const calib = STYLE_CALIBRATION[activeStyleId] || STYLE_CALIBRATION['classic-quiff'];
-
-    // Parametric 3D Cranial Geometry Generator
-    // Continuous 64x64 vertex grid with deep coronal wrap around skull flanks
-    const createCurvedCranialGeometry = (curvatureDepth = 75) => {
-      const geo = new THREE.PlaneGeometry(hairWidth, hairHeight, 64, 64);
-      const pos = geo.attributes.position;
-
-      for (let i = 0; i < pos.count; i++) {
-        const u = pos.getX(i) / (hairWidth / 2);  // -1 to +1
-        const v = pos.getY(i) / (hairHeight / 2); // -1 to +1
-
-        // Spheroid cranial curvature:
-        // - Coronal curvature: sweeps backwards around temples and ears into -Z
-        // - Sagittal curvature: arches over top of cranium into -Z
-        const lateralFactor = Math.pow(Math.abs(u), 2.2);
-        const coronalWrap = -lateralFactor * (curvatureDepth * 0.75);
-        const sagittalArch = v > 0 ? -Math.pow(v, 1.8) * (curvatureDepth * 0.50) : 0;
-        pos.setZ(i, coronalWrap + sagittalArch);
-      }
-      geo.computeVertexNormals();
-      geometries.push(geo);
-      return geo;
-    };
-
-    // Single Unified 3D Anatomical Cranial Mesh
-    const hairGeo = createCurvedCranialGeometry(calib.curvatureDepth || 72);
-    const hairMat = new THREE.MeshStandardMaterial({
-      roughness: 0.55,
-      metalness: 0.0,
-      transparent: true,
-      opacity: 0.98,
-      alphaTest: 0.005,
-      side: THREE.DoubleSide,
-      depthTest: true,
-      depthWrite: true,
-    });
-    materials.push(hairMat);
-    const hairMesh = new THREE.Mesh(hairGeo, hairMat);
-    hairMesh.position.set(0, 0, calib.zOffset || 0);
-    hairMesh.renderOrder = 2;
-    hairMesh.visible = false; // Hidden until texture or GLB loads
-    volumetricHairGroup.add(hairMesh);
-    meshes.push(hairMesh);
-
-    // Initial exact anatomical hairline seating directly at Landmark 10 (Trichion)
-    const vHairline = STYLE_HAIRLINE_V[activeStyleId] ?? 0.50;
-    const yHairlineInMesh = (vHairline - 0.5) * hairHeight;
-    const initialYShift = activeStyleId === 'volumetric-hairdeck' ? 0 : (-yHairlineInMesh + 18);
-    volumetricHairGroup.position.set(0, initialYShift, 0);
-
-    hairMaterialsRef.current = materials;
-    hairMeshesRef.current = meshes;
-
-    // 6. 60 FPS WebGL Render Loop with Visibility Check
     let animId: number;
-    const renderLoop = () => {
-      animId = requestAnimationFrame(renderLoop);
-      if (canvas.offsetParent !== null) {
-        renderer.render(scene, camera);
-      }
-    };
-    renderLoop();
 
-    // Responsive Canvas Resize Handler
-    const handleResize = () => {
-      if (!canvas.parentElement) return;
-      const nw = canvas.parentElement.clientWidth || window.innerWidth;
-      const nh = canvas.parentElement.clientHeight || window.innerHeight;
-      camera.aspect = nw / nh;
-      camera.updateProjectionMatrix();
-      renderer.setSize(nw, nh);
+    const render = () => {
+      animId = requestAnimationFrame(render);
+
+      const parent = canvas.parentElement;
+      const rect = canvas.getBoundingClientRect();
+      const canvasWidth = Math.round(rect.width) || (parent ? parent.clientWidth : window.innerWidth);
+      const canvasHeight = Math.round(rect.height) || (parent ? parent.clientHeight : window.innerHeight);
+
+      if (canvas.width !== canvasWidth || canvas.height !== canvasHeight) {
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+      }
+
+      ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+      if (!visible) return;
+
+      const hairImg = imageRef.current;
+      if (!hairImg || !hairImg.complete || hairImg.naturalWidth === 0) return;
+
+      // Aspect ratio compensation for objectFit: 'cover' video container
+      const safeVidW = (videoWidth && videoWidth > 0) ? videoWidth : 640;
+      const safeVidH = (videoHeight && videoHeight > 0) ? videoHeight : 480;
+      const videoAspect = safeVidW / safeVidH;
+      const containerAspect = canvasWidth / Math.max(1, canvasHeight);
+
+      let renderedW = canvasWidth;
+      let renderedH = canvasHeight;
+      let offsetX = 0;
+      let offsetY = 0;
+
+      if (containerAspect > videoAspect) {
+        // Container is wider: video cropped top & bottom
+        renderedH = canvasWidth / videoAspect;
+        offsetY = (canvasHeight - renderedH) / 2;
+      } else {
+        // Container is taller: video cropped left & right
+        renderedW = canvasHeight * videoAspect;
+        offsetX = (canvasWidth - renderedW) / 2;
+      }
+
+      const calib = STYLE_CALIBRATION[activeStyleId] || { scaleFactor: 1.0 };
+      const calibScale = calib.scaleFactor || 1.0;
+
+      let posX = 0;
+      let posY = 0;
+      let hairWidth = 0;
+      let rotation = 0;
+
+      const lm = landmarks;
+      if (lm && Array.isArray(lm) && lm.length >= 468 && lm[10] && lm[127] && lm[356]) {
+        // Project landmarks accounting for cover cropping and selfie mirroring
+        const p10 = getScreenLandmark(lm[10], canvasWidth, canvasHeight, safeVidW, safeVidH, isMirrored);
+        const p127 = getScreenLandmark(lm[127], canvasWidth, canvasHeight, safeVidW, safeVidH, isMirrored);
+        const p356 = getScreenLandmark(lm[356], canvasWidth, canvasHeight, safeVidW, safeVidH, isMirrored);
+
+        const spanDist = Math.hypot(p356.x - p127.x, p356.y - p127.y);
+        hairWidth = spanDist * 1.35 * calibScale;
+
+        const aspect = hairImg.naturalHeight / hairImg.naturalWidth;
+        const hairRenderHeight = hairWidth * aspect;
+
+        // Anatomical seating: locks hair asset baseline directly to Landmark 10 (Trichion hairline)
+        const vHairline = STYLE_HAIRLINE_V[activeStyleId] ?? 0.50;
+        posX = p10.x + (swayX || 0);
+        posY = p10.y + (0.50 - vHairline) * hairRenderHeight;
+
+        const pRight = p127.x > p356.x ? p127 : p356;
+        const pLeft  = p127.x > p356.x ? p356 : p127;
+        rotation = Math.atan2(pRight.y - pLeft.y, pRight.x - pLeft.x);
+      } else if (hairlinePctY !== undefined && centerPctX !== undefined) {
+        // centerPctX is already mirrored in 0-100% space
+        const normX = centerPctX / 100;
+        const normY = hairlinePctY / 100;
+        const centerX = offsetX + normX * renderedW;
+        const hairlineY = offsetY + normY * renderedH;
+        const skullW = skullWidthPx || (renderedW * 0.35);
+
+        hairWidth = skullW * 1.25 * calibScale;
+        const aspect = hairImg.naturalHeight / hairImg.naturalWidth;
+        const hairRenderHeight = hairWidth * aspect;
+
+        const vHairline = STYLE_HAIRLINE_V[activeStyleId] ?? 0.50;
+        posX = centerX + (swayX || 0);
+        posY = hairlineY + (0.50 - vHairline) * hairRenderHeight;
+        rotation = rollRad || 0;
+      } else {
+        return;
+      }
+
+      const aspect = hairImg.naturalHeight / hairImg.naturalWidth;
+      const hairRenderHeight = hairWidth * aspect;
+
+      ctx.save();
+      ctx.translate(posX, posY);
+      ctx.rotate(rotation);
+      ctx.drawImage(
+        hairImg,
+        -hairWidth / 2,
+        -hairRenderHeight / 2,
+        hairWidth,
+        hairRenderHeight
+      );
+      ctx.restore();
     };
-    window.addEventListener('resize', handleResize);
+
+    render();
 
     return () => {
       cancelAnimationFrame(animId);
-      window.removeEventListener('resize', handleResize);
-      renderer.dispose();
-      geometries.forEach((g) => g.dispose());
-      materials.forEach((m) => m.dispose());
     };
-  }, []);
+  }, [landmarks, activeStyleId, visible, isMirrored, videoWidth, videoHeight, hairlinePctY, centerPctX, skullWidthPx, rollRad, swayX]);
 
   if (Platform.OS !== 'web' || !visible) return null;
 

@@ -3,7 +3,9 @@
 // and the AI backend (Muse). The UI only consumes these shapes; Muse fills them.
 
 export interface FacialMetrics {
-  faceShape: 'Oblong' | 'Round' | 'Oval' | 'Square';
+  faceShape: 'Oval' | 'Round' | 'Square' | 'Oblong' | 'Heart';
+  scientificName?: string;
+  harmonyScore?: number;
   facialIndex: number; // height/width × 100
   verticalThirds: {
     upperThirdPct: number;   // hairline → brow (% of face height)
@@ -14,13 +16,27 @@ export interface FacialMetrics {
   goldenRatioDeviation: number; // |measured ratio − φ|  (0 = perfect φ)
 }
 
+export interface BarberInstructions {
+  clipperGuard?: string;
+  scissorTechnique?: string;
+  stylingProduct?: string;
+}
+
 export interface HairstyleOption {
   id: string;
   name: string;
   category: string;         // e.g. "Textured Fringe", "Fade", "Layered Bob"
-  whyItWorks: string;       // one-sentence rationale from Llama reasoning agent
+  whyItWorks: string;       // one-sentence rationale from Llama/Muse reasoning agent
   suitabilityScore: number; // 0–100 match percentage
   previewUrl: string;       // remote image URL for preview thumbnail
+  gender?: 'men' | 'women' | 'all';
+  length?: 'short' | 'medium' | 'long';
+  volumeProfile?: {
+    crown: 'high' | 'neutral' | 'low';
+    lateralSides: 'tapered' | 'full' | 'faded';
+    foreheadCoverage: 'full_bangs' | 'curtain' | 'swept' | 'exposed';
+  };
+  barberInstructions?: BarberInstructions;
 }
 
 export interface StylingPrescription {
@@ -31,5 +47,6 @@ export interface StylingPrescription {
     foreheadCoverage: 'full_bangs' | 'curtain' | 'swept' | 'exposed';
   };
   rationalization: string;  // two-sentence LLM explanation
+  cautions?: string;
   suggestedStyles: HairstyleOption[];
 }

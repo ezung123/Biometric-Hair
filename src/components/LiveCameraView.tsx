@@ -25,12 +25,17 @@ import { initMediaPipe, trackHeadPose3D } from '@/services/mediapipeFaceTracker'
 import { detectHairlineDecisionBoundary } from '@/services/hairlineDetector';
 import { hairSegmenter } from '@/services/hairSegmentation';
 import type { FacialMetrics } from '@/types';
+import { globalFaceStatusTracker, type FaceStatusEvaluation } from '@/lib/faceStatus';
+import { createCoverTransform } from '@/lib/coverTransform';
+import { DEBUG_CAPTURE } from '@/constants/flags';
 
 export interface LiveCameraViewRef {
   captureSnapshot: () => string | null;
   startCamera: () => void;
   stopCamera: () => void;
   hasCameraStream: boolean;
+  getBoundaryState: () => any;
+  getFaceStatus: () => FaceStatusEvaluation | null;
 }
 
 interface LiveCameraViewProps {
@@ -61,9 +66,13 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
     ref
   ) => {
     const { colors, isDark } = useAppTheme();
-    const { width: windowW } = useWindowDimensions();
+    const { width: windowW, height: windowH } = useWindowDimensions();
     const [hasCameraStream, setHasCameraStream] = useState(false);
     const [cameraPermissionError, setCameraPermissionError] = useState(false);
+
+    // Single source of truth face status evaluation
+    const [faceEvaluation, setFaceEvaluation] = useState<FaceStatusEvaluation | null>(null);
+    const faceEvaluationRef = useRef<FaceStatusEvaluation | null>(null);
 
     // 6-DOF 3D Head Pose & Hairline State
     const [boundaryState, setBoundaryState] = useState<{
@@ -219,16 +228,29 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
 
       if (!trackingCanvasRef.current) {
         trackingCanvasRef.current = document.createElement('canvas');
-        trackingCanvasRef.current.width = 160;
-        trackingCanvasRef.current.height = 120;
+        trackingCanvasRef.current.width = 320;
+        trackingCanvasRef.current.height = 240;
       }
 
       trackingIntervalRef.current = setInterval(() => {
         const video = videoRef.current;
         if (!video || video.paused || video.ended || video.videoWidth === 0) return;
 
+        if (video.videoWidth > 0 && (video.videoWidth !== videoDimensions.width || video.videoHeight !== videoDimensions.height)) {
+          setVideoDimensions({ width: video.videoWidth, height: video.videoHeight });
+        }
+
         const canvas = trackingCanvasRef.current;
         if (!canvas) return;
+
+        const aspect = (video.videoWidth > 0 && video.videoHeight > 0) ? (video.videoWidth / video.videoHeight) : (4 / 3);
+        const targetW = 320;
+        const targetH = Math.round(320 / aspect);
+        if (canvas.width !== targetW || canvas.height !== targetH) {
+          canvas.width = targetW;
+          canvas.height = targetH;
+        }
+
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         if (!ctx) return;
 
@@ -286,12 +308,40 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
             };
           });
         }
+
+        // Single source of truth: evaluate face alignment & status
+        const vidW = video.videoWidth || 640;
+        const vidH = video.videoHeight || 480;
+        const transform = createCoverTransform({
+          videoWidth: vidW,
+          videoHeight: vidH,
+          containerWidth: windowW,
+          containerHeight: windowH,
+          isMirrored: true,
+        });
+
+        let pxData: Uint8ClampedArray | undefined;
+        try {
+          const imgD = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          pxData = imgD.data;
+        } catch {}
+
+        const evaluation = globalFaceStatusTracker.evaluate(
+          result.detected ? result.landmarks : null,
+          transform,
+          result.confidence > 0.90 ? 'mediapipe_video' : 'pure_js_anatomical',
+          pxData,
+          canvas.width,
+          canvas.height
+        );
+        faceEvaluationRef.current = evaluation;
+        setFaceEvaluation(evaluation);
       }, 33);
 
       return () => {
         if (trackingIntervalRef.current) clearInterval(trackingIntervalRef.current);
       };
-    }, [hasCameraStream, cameraEnabled, windowW]);
+    }, [hasCameraStream, cameraEnabled, windowW, windowH]);
 
     // Real-Time Live Feed Rendering with Natural Hair Suppression
     useEffect(() => {
@@ -319,24 +369,12 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
 
           const ctx = canvas.getContext('2d', { willReadFrequently: true });
           if (ctx) {
-            // Draw mirrored camera feed (Snapchat / Instagram selfie orientation)
+            // Draw clean mirrored camera feed (selfie orientation)
             ctx.save();
             ctx.translate(canvas.width, 0);
             ctx.scale(-1, 1);
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             ctx.restore();
-
-            // Suppress protruding natural hair for short 2D styles only when face landmarks are active
-            if (showAugmentation && activeStyleId && activeStyleId !== 'volumetric-hairdeck' && boundaryState.landmarks) {
-              hairSegmenter.suppressNaturalHairLive(canvas, {
-                hairlinePctY: boundaryState.hairlinePctY,
-                centerPctX: boundaryState.centerPctX,
-                skullWidthPx: boundaryState.skullWidthPx,
-                styleId: activeStyleId,
-                landmarks: boundaryState.landmarks,
-                isMirrored: true,
-              });
-            }
           }
         }
 
@@ -437,6 +475,8 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
       startCamera,
       stopCamera,
       hasCameraStream,
+      getBoundaryState: () => boundaryState,
+      getFaceStatus: () => faceEvaluationRef.current,
     }));
 
     return (
@@ -522,59 +562,88 @@ export const LiveCameraView = forwardRef<LiveCameraViewRef, LiveCameraViewProps>
           </View>
         ) : null}
 
-        {/* ── 3. True 3D Volumetric Hairstyle with 6-DOF Motion (Pitch, Yaw, Roll) ── */}
-        <View style={[StyleSheet.absoluteFill, { zIndex: 10 }]} pointerEvents="none">
-        {showAugmentation && (
-          <ARHairCanvas3D
-            activeStyleId={activeStyleId}
-            hairAssetUri={augmentedHairAsset}
-            hairlinePctY={boundaryState.hairlinePctY}
-            centerPctX={boundaryState.centerPctX}
-            skullWidthPx={boundaryState.skullWidthPx}
-            pitchRad={boundaryState.pitchRad}
-            yawRad={boundaryState.yawRad}
-            rollRad={boundaryState.rollRad}
-            swayX={boundaryState.swayX}
+        {/* ── 4. AR Neoclassical Reticle Overlay ── */}
+        <View style={styles.overlayWrapper} pointerEvents="none">
+          <BiometricOverlay
+            visible={hudVisible}
+            metrics={metrics}
             landmarks={boundaryState.landmarks}
+            faceEvaluation={faceEvaluation}
             videoWidth={videoDimensions.width}
             videoHeight={videoDimensions.height}
             isMirrored={true}
-            visible={true}
           />
-        )}
         </View>
 
-        {/* ── 4. AR Neoclassical Reticle Overlay ── */}
-        <View style={styles.overlayWrapper} pointerEvents="none">
-          <BiometricOverlay visible={hudVisible} metrics={metrics} />
-        </View>
-
-        {/* ── 5. Status Pill: 3D Volumetric Tracking State ── */}
+        {/* ── 5. Status Pill: Biometric Tracking State ── */}
         <View style={styles.reticleBadgeWrapper} pointerEvents="none">
           <View
             style={[
               styles.reticleBadge,
               {
                 backgroundColor: 'rgba(12, 10, 9, 0.75)',
-                borderColor: colors.accent,
+                borderColor: faceEvaluation?.isOk
+                  ? '#10B981'
+                  : faceEvaluation?.code === 'NO_FACE'
+                  ? colors.accent
+                  : '#F59E0B',
               },
             ]}
           >
             <View
               style={[
                 styles.reticleDot,
-                { backgroundColor: hasCameraStream ? colors.accentGreen : colors.accent },
+                {
+                  backgroundColor: faceEvaluation?.isOk
+                    ? '#10B981'
+                    : faceEvaluation?.code === 'NO_FACE'
+                    ? colors.accent
+                    : '#F59E0B',
+                },
               ]}
             />
-            <Text style={[styles.reticleText, { color: colors.accent }]}>
+            <Text
+              style={[
+                styles.reticleText,
+                {
+                  color: faceEvaluation?.isOk
+                    ? '#10B981'
+                    : faceEvaluation?.code === 'NO_FACE'
+                    ? colors.accent
+                    : '#F59E0B',
+                },
+              ]}
+            >
               {frozenImageUri
-                ? 'AUGMENTED SNAPSHOT CAPTURED'
+                ? 'BIOMETRIC PORTRAIT CAPTURED'
                 : hasCameraStream
-                ? `TRUE 3D VOLUMETRIC AR · PITCH ${(boundaryState.pitchRad * 180 / Math.PI).toFixed(0)}° · YAW ${(boundaryState.yawRad * 180 / Math.PI).toFixed(0)}°`
+                ? (faceEvaluation?.statusPillText || 'ALIGN FACE IN GOLDEN OVAL')
                 : 'ALIGN FACE IN GOLDEN OVAL'}
             </Text>
           </View>
         </View>
+
+        {/* ── 6. Developer Capture Debug Overlay (Only when ?debug=1 in URL) ── */}
+        {DEBUG_CAPTURE && __DEV__ && (typeof window !== 'undefined' && window.location?.search?.includes('debug=1')) && faceEvaluation && (
+          <View style={styles.debugCaptureOverlay} pointerEvents="none">
+            <Text style={styles.debugText}>SOURCE: {faceEvaluation.metrics.source}</Text>
+            <Text style={styles.debugText}>
+              STATUS: {faceEvaluation.code} ({faceEvaluation.isOk ? 'OK' : faceEvaluation.metrics.failingRule || 'PENDING'})
+            </Text>
+            <Text style={styles.debugText}>
+              WIDTH: {faceEvaluation.metrics.faceWidthPct.toFixed(1)}% (tgt 22-75%)
+            </Text>
+            <Text style={styles.debugText}>
+              CTR DELTA: X={faceEvaluation.metrics.centerDeltaXPx.toFixed(1)}px Y={faceEvaluation.metrics.centerDeltaYPx.toFixed(1)}px
+            </Text>
+            <Text style={styles.debugText}>
+              POSE: Y={faceEvaluation.metrics.yawDeg.toFixed(1)}° P={faceEvaluation.metrics.pitchDeg.toFixed(1)}° R={faceEvaluation.metrics.rollDeg.toFixed(1)}°
+            </Text>
+            <Text style={styles.debugText}>
+              LUM: {faceEvaluation.metrics.meanLuminance.toFixed(0)} (tgt 60-215)
+            </Text>
+          </View>
+        )}
       </View>
     );
   }
@@ -691,5 +760,24 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1,
+  },
+  debugCaptureOverlay: {
+    position: 'absolute',
+    top: 96,
+    left: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    zIndex: 30,
+    maxWidth: 260,
+  },
+  debugText: {
+    color: '#34D399',
+    fontSize: 9,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    lineHeight: 13,
   },
 });

@@ -59,22 +59,15 @@ class HairSegmentationService {
     this.isInitializing = true;
 
     try {
-      let tasksVision: any;
-      try {
-        tasksVision = await import('@mediapipe/tasks-vision');
-      } catch (err) {
-        if ((window as any).tasksVision) {
-          tasksVision = (window as any).tasksVision;
-        } else {
-          await new Promise<void>((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/tasks-vision.js';
-            script.crossOrigin = 'anonymous';
-            script.onload = () => resolve();
-            script.onerror = (e) => reject(e);
-            document.head.appendChild(script);
-          });
-          tasksVision = (window as any).tasksVision;
+      let tasksVision: any = (window as any).tasksVision;
+      if (!tasksVision) {
+        try {
+          // Dynamic ESM import via CDN avoids Metro static bundler WASM parsing limitations
+          const cdnUrl = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/vision_bundle.mjs';
+          const dynamicImport = new Function('url', 'return import(url)');
+          tasksVision = await dynamicImport(cdnUrl);
+        } catch (cdnErr) {
+          console.warn('[HairSegmentation] Tasks Vision CDN dynamic import deferred:', cdnErr);
         }
       }
 
@@ -85,7 +78,7 @@ class HairSegmentationService {
       const { ImageSegmenter, FilesetResolver } = tasksVision;
 
       const vision = await FilesetResolver.forVisionTasks(
-        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm'
       );
       this.wasmLoaded = true;
 

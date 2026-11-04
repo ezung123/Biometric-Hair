@@ -1,21 +1,46 @@
-// ─── Baseten Muse Spark Open Live Reasoning Service ───────────────────────────
-// Connects to Meta's open-weights Muse Spark Open model on Baseten
-// Model: meta-models/muse-spark-open-1026
-// Uses deep reasoning to calculate volumetric compensation based on Neoclassical anthropometrics.
+// ══════════════════════════════════════════════════════════════════════════════
+// src/services/basetenService.ts
+// LIVE REASONING CLIENT SERVICE (PROXIED ONLY - ZERO HARDCODED KEYS)
+// Connects to Meta Muse Spark Open (meta-models/muse-spark-open-1026 via Baseten)
+// through our secure server proxy.
+// ══════════════════════════════════════════════════════════════════════════════
 
 import type { FacialMetrics, StylingPrescription } from '@/types';
 import { calculateFacialHarmony } from './anthropometrics';
-import { HAIRCUT_DATASET } from '@/constants/haircutDataset';
-
-const BASETEN_API_KEY = 'b10_0ivZJ0P3.6JVnj9i9JHuaGDCaxnZZV8Wu5KDLruJT';
-const BASETEN_BASE_URL = 'https://inference.baseten.co/v1';
-const BASETEN_MODEL = 'meta-models/muse-spark-open-1026';
+import { HAIRCUT_DATASET, type DatasetHairstyle } from '@/constants/haircutDataset';
 
 export interface MuseAnalysisResult {
-  source: 'live_muse_spark_open' | 'local_mathematical_engine';
+  source: 'live_muse_spark_open' | 'cached_muse_spark_open' | 'local_mathematical_engine';
   prescription: StylingPrescription;
   reasoningSnippet?: string;
   latencyMs: number;
+  model: string;
+}
+
+export interface ConciergeChatResult {
+  reply: string;
+  latencyMs: number;
+  source: 'live_muse_spark_open' | 'fallback_local';
+  model: string;
+}
+
+export interface TranslationResult {
+  translatedText: string;
+  isCached: boolean;
+  source: 'live_muse_spark_open' | 'fallback_dictionary';
+}
+
+function getProxyBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    // If running in production (Vercel, custom domain, etc.), use same-origin relative /api
+    const host = window.location.hostname;
+    if (host && host !== 'localhost' && host !== '127.0.0.1') {
+      return '';
+    }
+    // In local development, check if on proxy port or expo dev server
+    return window.location.port === '3001' ? '' : 'http://localhost:3001';
+  }
+  return 'http://localhost:3001';
 }
 
 function mapForeheadGeometry(geom: string): 'full_bangs' | 'curtain' | 'swept' | 'exposed' {
@@ -26,11 +51,13 @@ function mapForeheadGeometry(geom: string): 'full_bangs' | 'curtain' | 'swept' |
 }
 
 /**
- * Invokes Meta Muse Spark Open via Baseten to reason about facial geometry
- * and prescribe the mathematically optimal haircut.
+ * Invokes Meta Muse Spark Open via our secure server proxy.
+ * Zero keys client-side. Strict JSON schema validation and local rule engine fallback.
  */
 export async function analyzeFacialGeometryWithMuse(
-  metrics: FacialMetrics
+  metrics: FacialMetrics,
+  audience?: 'masculine' | 'feminine' | 'all',
+  detectedCurrentHair?: string
 ): Promise<MuseAnalysisResult> {
   const startTime = Date.now();
   const harmony = calculateFacialHarmony(
@@ -40,55 +67,25 @@ export async function analyzeFacialGeometryWithMuse(
     metrics.verticalThirds.lowerThirdPct
   );
 
-  const prompt = `You are a high-end bespoke aesthetic biometric stylist and master barber.
-Analyze this person's Neoclassical facial metrics:
-- Face Shape: ${metrics.faceShape} (${harmony.morphologyCategory})
-- Facial Index: ${metrics.facialIndex} (Height/Width ratio: ${(metrics.facialIndex / 100).toFixed(2)})
-- Vertical Thirds: Upper=${metrics.verticalThirds.upperThirdPct}%, Mid=${metrics.verticalThirds.midThirdPct}%, Lower=${metrics.verticalThirds.lowerThirdPct}% (Canonical is 33.33% each)
-- Thirds Variance Score: ${metrics.verticalThirds.varianceScore}
-- Golden Ratio (φ ≈ 1.618) Deviation: ${metrics.goldenRatioDeviation}
-- Harmonic Balance Score: ${harmony.harmonicBalanceScore}/100
-
-Using mathematical volumetric compensation, provide an editorial styling prescription.
-Respond with ONLY a valid JSON object matching this schema:
-{
-  "haircutName": "string",
-  "volumeProfile": {
-    "crown": "high" | "neutral" | "low",
-    "lateralSides": "tapered" | "full" | "faded",
-    "foreheadCoverage": "full_bangs" | "curtain" | "swept" | "exposed"
-  },
-  "rationalization": "string (two sentences detailing exact mathematical compensation for the vertical thirds and golden ratio)",
-  "recommendedStyles": [
-    {
-      "name": "string",
-      "category": "string",
-      "whyItWorks": "string",
-      "suitabilityScore": number
-    }
-  ]
-}`;
+  const matchingStyles = HAIRCUT_DATASET.filter((h) =>
+    h.targetMorphology.includes(metrics.faceShape)
+  );
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 9000); // 9s timeout for mobile fluidity
+    const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
 
-    const response = await fetch(`${BASETEN_BASE_URL}/chat/completions`, {
+    const proxyUrl = `${getProxyBaseUrl()}/api/baseten/prescription`;
+    const response = await fetch(proxyUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${BASETEN_API_KEY}`,
+        'X-App-Token': 'biometric-hair-token-v1',
       },
       body: JSON.stringify({
-        model: BASETEN_MODEL,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an expert aesthetic anthropometrist and luxury hair stylist. Output valid JSON only.',
-          },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.2,
+        metrics,
+        audience,
+        detectedCurrentHair,
       }),
       signal: controller.signal,
     });
@@ -97,57 +94,36 @@ Respond with ONLY a valid JSON object matching this schema:
 
     if (response.ok) {
       const data = await response.json();
-      const content = data?.choices?.[0]?.message?.content || '';
-      
-      // Clean JSON string if wrapped in markdown code fence
-      const cleanJson = content.replace(/```json/g, '').replace(/```/g, '').trim();
-      const parsed = JSON.parse(cleanJson);
-
-      const matchingStyles = HAIRCUT_DATASET.filter((h) =>
-        h.targetMorphology.includes(metrics.faceShape)
-      );
-
-      const suggestedStyles = (parsed.recommendedStyles || []).map(
-        (style: any, idx: number) => {
-          const fallbackStyle = matchingStyles[idx] || matchingStyles[0];
-          return {
-            id: `muse-${idx}-${Date.now()}`,
-            name: style.name || fallbackStyle.name,
-            category: style.category || fallbackStyle.category,
-            whyItWorks: style.whyItWorks || fallbackStyle.whyItWorks,
-            suitabilityScore: Math.min(99, Math.max(75, style.suitabilityScore || 90)),
-            previewUrl: fallbackStyle.previewUrl,
-          };
-        }
-      );
-
-      return {
-        source: 'live_muse_spark_open',
-        prescription: {
-          haircutName: parsed.haircutName || harmony.compensatoryVector.foreheadGeometry.replace('_', ' ').toUpperCase(),
-          volumeProfile: parsed.volumeProfile || {
-            crown: harmony.compensatoryVector.crownElevation === 'elevated' ? 'high' : 'neutral',
-            lateralSides: harmony.compensatoryVector.lateralTempleWidth === 'widen' ? 'full' : 'tapered',
-            foreheadCoverage: mapForeheadGeometry(harmony.compensatoryVector.foreheadGeometry),
+      if (data.success && data.prescription) {
+        return {
+          source: data.source === 'cached' ? 'cached_muse_spark_open' : 'live_muse_spark_open',
+          model: 'Muse Spark Open (Meta hackathon, via Baseten)',
+          prescription: {
+            haircutName: data.prescription.volumeProfile?.foreheadCoverage
+              ? `${data.prescription.volumeProfile.foreheadCoverage.replace('_', ' ').toUpperCase()} ARCHITECTURE`
+              : harmony.compensatoryVector.foreheadGeometry.replace('_', ' ').toUpperCase(),
+            volumeProfile: {
+              crown: data.prescription.volumeProfile?.crown || 'neutral',
+              lateralSides: data.prescription.volumeProfile?.lateralSides || 'tapered',
+              foreheadCoverage: mapForeheadGeometry(data.prescription.volumeProfile?.foreheadCoverage || 'swept'),
+            },
+            rationalization: data.prescription.rationalization || harmony.compensatoryVector.mathematicalRationale,
+            cautions: data.prescription.cautions,
+            suggestedStyles: matchingStyles,
           },
-          rationalization: parsed.rationalization || harmony.compensatoryVector.mathematicalRationale,
-          suggestedStyles: suggestedStyles.length > 0 ? suggestedStyles : matchingStyles,
-        },
-        reasoningSnippet: data?.choices?.[0]?.message?.reasoning || 'Neoclassical biometric compensation generated.',
-        latencyMs: Date.now() - startTime,
-      };
+          reasoningSnippet: data.prescription.rationalization,
+          latencyMs: data.latencyMs || Date.now() - startTime,
+        };
+      }
     }
   } catch (err) {
-    console.warn('[Baseten Muse] Live call failed or timed out, using local anthropometric mathematical engine:', err);
+    console.warn('[Muse Spark Open] Proxy call failed or timed out, activating deterministic Neoclassical fallback:', err);
   }
 
   // Graceful fallback to deterministic anthropometric mathematical engine
-  const matchingStyles = HAIRCUT_DATASET.filter((h) =>
-    h.targetMorphology.includes(metrics.faceShape)
-  );
-
   return {
     source: 'local_mathematical_engine',
+    model: 'Neoclassical Anthropometric Engine (Offline Fallback)',
     prescription: {
       haircutName:
         metrics.faceShape === 'Oblong'
@@ -161,8 +137,91 @@ Respond with ONLY a valid JSON object matching this schema:
         foreheadCoverage: mapForeheadGeometry(harmony.compensatoryVector.foreheadGeometry),
       },
       rationalization: harmony.compensatoryVector.mathematicalRationale,
+      cautions: 'Aesthetic mathematical guidance only. Not medical or trichological advice.',
       suggestedStyles: matchingStyles,
     },
     latencyMs: Date.now() - startTime,
+  };
+}
+
+/**
+ * Salon Concierge chat grounded in user measurements and chosen style
+ */
+export async function askSalonConcierge(
+  message: string,
+  metrics?: FacialMetrics,
+  chosenStyle?: DatasetHairstyle
+): Promise<ConciergeChatResult> {
+  const t0 = Date.now();
+  try {
+    const proxyUrl = `${getProxyBaseUrl()}/api/baseten/concierge`;
+    const res = await fetch(proxyUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-App-Token': 'biometric-hair-token-v1',
+      },
+      body: JSON.stringify({ message, metrics, chosenStyle }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && data.reply) {
+        return {
+          reply: data.reply,
+          latencyMs: data.latencyMs || Date.now() - t0,
+          source: 'live_muse_spark_open',
+          model: 'Muse Spark Open (Meta hackathon, via Baseten)',
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('[Concierge] Live chat call failed, using local advice fallback:', err);
+  }
+
+  return {
+    reply: `Based on your ${metrics?.faceShape || 'facial'} proportions, maintaining balanced crown volume while keeping the sides tapered will accentuate your natural symmetry. For styling, a matte texture paste works best.`,
+    latencyMs: Date.now() - t0,
+    source: 'fallback_local',
+    model: 'Concierge Local Rules Engine',
+  };
+}
+
+/**
+ * Translates salon text using Meta Muse Spark Open with in-memory caching
+ */
+export async function translateSalonText(
+  text: string,
+  targetLang: 'ES' | 'ZH' | 'FR'
+): Promise<TranslationResult> {
+  try {
+    const proxyUrl = `${getProxyBaseUrl()}/api/baseten/translate`;
+    const res = await fetch(proxyUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-App-Token': 'biometric-hair-token-v1',
+      },
+      body: JSON.stringify({ text, targetLang }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && data.translatedText) {
+        return {
+          translatedText: data.translatedText,
+          isCached: data.isCached || false,
+          source: 'live_muse_spark_open',
+        };
+      }
+    }
+  } catch {
+    // Quiet fallback
+  }
+
+  return {
+    translatedText: text,
+    isCached: false,
+    source: 'fallback_dictionary',
   };
 }

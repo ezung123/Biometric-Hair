@@ -6,6 +6,17 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ThemeProvider } from '@/context/ThemeContext';
 
+if (typeof window !== 'undefined') {
+  const origError = console.error;
+  console.error = (...args: any[]) => {
+    const msg = typeof args[0] === 'string' ? args[0] : '';
+    if (msg.includes('TensorFlow Lite XNNPACK') || msg.includes('GL Driver Message')) {
+      return;
+    }
+    origError(...args);
+  };
+}
+
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
@@ -15,7 +26,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ThemeProvider>
         <NavigationThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <View style={{ flex: 1, backgroundColor: '#000000' }}>
+          <View style={{ flex: 1, backgroundColor: '#F7F8FA' }}>
             <Slot />
           </View>
         </NavigationThemeProvider>

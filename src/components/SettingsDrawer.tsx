@@ -25,14 +25,14 @@ interface SettingsDrawerProps {
   onToggleCamera: () => void;
 }
 
-export function SettingsDrawer({
+export const SettingsDrawer = React.memo(function SettingsDrawer({
   visible,
   onClose,
   onNavigateHome,
   onOpenLearnAboutFace,
   onOpenLearnHairstyles,
   onOpenAboutUs,
-  cameraActive,
+  cameraActive = true,
   onToggleCamera,
 }: SettingsDrawerProps) {
   const { colors, mode, toggleTheme, isDark } = useAppTheme();
@@ -46,20 +46,20 @@ export function SettingsDrawer({
     >
       <View style={styles.overlay}>
         {/* Dimmed backdrop */}
-        <Pressable style={styles.backdrop} onPress={onClose} />
+        <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close menu" />
 
         {/* Inset iOS Style Drawer Container */}
         <View
           style={[
             styles.drawer,
             {
-              backgroundColor: isDark ? '#1C1C1E' : '#F2F2F7',
-              borderColor: isDark ? '#2C2C2E' : '#E5E5EA',
+              backgroundColor: colors.bg,
+              borderColor: colors.border,
             },
           ]}
         >
           {/* Header */}
-          <View style={[styles.drawerHeader, { borderBottomColor: isDark ? '#2C2C2E' : '#E5E5EA' }]}>
+          <View style={[styles.drawerHeader, { borderBottomColor: colors.border }]}>
             <View>
               <Text style={[styles.drawerTitle, { color: colors.text }]}>Biometric Hair Arch</Text>
               <Text style={[styles.drawerSubtitle, { color: colors.accent }]}>Version 1.0.0</Text>
@@ -69,8 +69,8 @@ export function SettingsDrawer({
               style={[
                 styles.closeBtn,
                 {
-                  backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA',
-                  borderColor: isDark ? '#3A3A3C' : '#D1D1D6',
+                  backgroundColor: colors.bgSubtle,
+                  borderColor: colors.border,
                 },
               ]}
               accessibilityLabel="Close menu"
@@ -81,18 +81,18 @@ export function SettingsDrawer({
 
           <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             {/* ── Section: Navigation ── */}
-            <Text style={[styles.sectionHeader, { color: isDark ? '#8E8E93' : '#6C6C70' }]}>NAVIGATION</Text>
-            <View style={[styles.groupedCard, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF', borderColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>NAVIGATION</Text>
+            <View style={[styles.groupedCard, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}>
               {/* Home */}
               <Pressable
                 onPress={() => {
                   onClose();
                   onNavigateHome();
                 }}
-                style={[styles.rowItem, { borderBottomColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}
+                style={[styles.rowItem, { borderBottomColor: colors.border }]}
               >
                 <Text style={[styles.rowLabel, { color: colors.text }]}>Home</Text>
-                <Text style={styles.chevron}>›</Text>
+                <Text style={[styles.chevron, { color: colors.textSecondary }]}>›</Text>
               </Pressable>
 
               {/* Haircut Architecture */}
@@ -101,10 +101,10 @@ export function SettingsDrawer({
                   onClose();
                   onOpenLearnHairstyles();
                 }}
-                style={[styles.rowItem, { borderBottomColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}
+                style={[styles.rowItem, { borderBottomColor: colors.border }]}
               >
                 <Text style={[styles.rowLabel, { color: colors.text }]}>Haircut Architecture</Text>
-                <Text style={styles.chevron}>›</Text>
+                <Text style={[styles.chevron, { color: colors.textSecondary }]}>›</Text>
               </Pressable>
 
               {/* Facial Proportions */}
@@ -113,10 +113,10 @@ export function SettingsDrawer({
                   onClose();
                   onOpenLearnAboutFace();
                 }}
-                style={[styles.rowItem, { borderBottomColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}
+                style={[styles.rowItem, { borderBottomColor: colors.border }]}
               >
                 <Text style={[styles.rowLabel, { color: colors.text }]}>Facial Proportions (φ 1.618)</Text>
-                <Text style={styles.chevron}>›</Text>
+                <Text style={[styles.chevron, { color: colors.textSecondary }]}>›</Text>
               </Pressable>
 
               {/* About Us */}
@@ -128,15 +128,15 @@ export function SettingsDrawer({
                 style={styles.rowItemLast}
               >
                 <Text style={[styles.rowLabel, { color: colors.text }]}>About Us</Text>
-                <Text style={styles.chevron}>›</Text>
+                <Text style={[styles.chevron, { color: colors.textSecondary }]}>›</Text>
               </Pressable>
             </View>
 
             {/* ── Section: Controls & Preferences ── */}
-            <Text style={[styles.sectionHeader, { color: isDark ? '#8E8E93' : '#6C6C70' }]}>CONTROLS</Text>
-            <View style={[styles.groupedCard, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF', borderColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>CONTROLS</Text>
+            <View style={[styles.groupedCard, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}>
               {/* Laptop Camera Toggle */}
-              <View style={[styles.rowItem, { borderBottomColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}>
+              <View style={[styles.rowItem, { borderBottomColor: colors.border }]}>
                 <Text style={[styles.rowLabel, { color: colors.text }]}>Webcam Stream</Text>
                 <Pressable
                   onPress={onToggleCamera}
@@ -144,8 +144,8 @@ export function SettingsDrawer({
                     styles.togglePill,
                     {
                       backgroundColor: cameraActive
-                        ? isDark ? '#30D158' : '#34C759'
-                        : isDark ? '#3A3A3C' : '#E5E5EA',
+                        ? isDark ? '#30D158' : '#16A34A'
+                        : colors.bgSubtle,
                     },
                   ]}
                 >
@@ -162,45 +162,77 @@ export function SettingsDrawer({
                   onPress={toggleTheme}
                   style={[
                     styles.segmentedControl,
-                    { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA' },
+                    { backgroundColor: colors.bgSubtle, borderColor: colors.border, borderWidth: 1 },
                   ]}
                 >
                   <Text style={[styles.segmentLabel, { color: colors.text }]}>
-                    {mode === 'light' ? 'Cream' : 'Dark'}
+                    {mode === 'light' ? 'Pearl White' : 'Dark'}
                   </Text>
                 </Pressable>
               </View>
             </View>
 
             {/* ── Section: AI Compute Infrastructure ── */}
-            <Text style={[styles.sectionHeader, { color: isDark ? '#8E8E93' : '#6C6C70' }]}>AI ENGINE</Text>
-            <View style={[styles.groupedCard, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF', borderColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}>
-              <View style={[styles.rowItem, { borderBottomColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}>
-                <Text style={[styles.rowLabel, { color: colors.text }]}>Meta Muse Spark Open</Text>
-                <Text style={[styles.badgeText, { color: isDark ? '#30D158' : '#34C759' }]}>Baseten Active</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>AI ENGINE ARCHITECTURE</Text>
+            <View style={[styles.groupedCard, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}>
+              <View style={[styles.rowItem, { borderBottomColor: colors.border }]}>
+                <View>
+                  <Text style={[styles.rowLabel, { color: colors.text }]}>Muse Spark Open (816B)</Text>
+                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>Cephalometrics & Salon Concierge</Text>
+                </View>
+                <Text style={[styles.badgeText, { color: isDark ? '#30D158' : '#16A34A', fontWeight: '700' }]}>LIVE (Baseten)</Text>
+              </View>
+              <View style={[styles.rowItem, { borderBottomColor: colors.border }]}>
+                <View>
+                  <Text style={[styles.rowLabel, { color: colors.text }]}>MediaPipe FaceLandmarker</Text>
+                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>468 3D Landmarks & Head Pose</Text>
+                </View>
+                <Text style={[styles.badgeText, { color: isDark ? '#30D158' : '#16A34A', fontWeight: '700' }]}>ON-DEVICE</Text>
+              </View>
+              <View style={[styles.rowItem, { borderBottomColor: colors.border }]}>
+                <View>
+                  <Text style={[styles.rowLabel, { color: colors.text }]}>Meta Muse Image</Text>
+                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>Instruction Edit (OpenRouter)</Text>
+                </View>
+                <Text style={[styles.badgeText, { color: '#FF9F0A', fontWeight: '700' }]}>PROXY READY</Text>
               </View>
               <View style={styles.rowItemLast}>
-                <Text style={[styles.rowLabel, { color: colors.text }]}>Meta SAM 3.1 &amp; Inpaint</Text>
-                <Text style={[styles.badgeText, { color: isDark ? '#30D158' : '#34C759' }]}>Modal Active</Text>
+                <View>
+                  <Text style={[styles.rowLabel, { color: colors.text }]}>Neoclassical Anthropometrics</Text>
+                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>Deterministic Renaissance Math</Text>
+                </View>
+                <Text style={[styles.badgeText, { color: colors.accent, fontWeight: '700' }]}>OFFLINE FALLBACK</Text>
               </View>
             </View>
 
             {/* ── Section: Privacy & Legal ── */}
-            <Text style={[styles.sectionHeader, { color: isDark ? '#8E8E93' : '#6C6C70' }]}>PRIVACY &amp; LEGAL</Text>
-            <View style={[styles.groupedCard, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF', borderColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}>
-              <View style={[styles.rowItem, { borderBottomColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>PRIVACY & LEGAL</Text>
+            <View style={[styles.groupedCard, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}>
+              <Pressable
+                onPress={() => {
+                  onClose();
+                  onOpenAboutUs();
+                }}
+                style={[styles.rowItem, { borderBottomColor: colors.border }]}
+              >
                 <Text style={[styles.rowLabel, { color: colors.text }]}>Biometric Data Protection</Text>
-                <Text style={[styles.badgeText, { color: isDark ? '#8E8E93' : '#6C6C70' }]}>GDPR / CCPA</Text>
-              </View>
-              <View style={styles.rowItemLast}>
-                <Text style={[styles.rowLabel, { color: colors.text }]}>Terms of Service</Text>
-                <Text style={styles.chevron}>›</Text>
-              </View>
+                <Text style={[styles.badgeText, { color: colors.textSecondary }]}>Zero Storage (GDPR)</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  onClose();
+                  onOpenAboutUs();
+                }}
+                style={styles.rowItemLast}
+              >
+                <Text style={[styles.rowLabel, { color: colors.text }]}>Terms of Service & AI Ethics</Text>
+                <Text style={[styles.chevron, { color: colors.textSecondary }]}>›</Text>
+              </Pressable>
             </View>
 
             {/* Footer */}
             <View style={styles.footer}>
-              <Text style={[styles.footerText, { color: isDark ? '#8E8E93' : '#8E8E93' }]}>
+              <Text style={[styles.footerText, { color: colors.textSecondary }]}>
                 Meta Global AI Developer Hackathon Edition
               </Text>
             </View>
@@ -209,7 +241,7 @@ export function SettingsDrawer({
       </View>
     </Modal>
   );
-}
+});
 
 const styles = StyleSheet.create({
   overlay: {

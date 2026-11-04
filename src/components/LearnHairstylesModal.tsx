@@ -60,9 +60,9 @@ export function LearnHairstylesModal({ visible, onClose }: LearnHairstylesModalP
             {/* 1. Curtain Fringe & Bangs */}
             <View style={[styles.card, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
               <Text style={[styles.tag, { color: colors.accent }]}>01 · FOREHEAD COVERAGE</Text>
-              <Text style={[styles.cardTitle, { color: colors.text }]}>Curtain Fringe &amp; Bangs</Text>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>Curtain Fringe & Bangs</Text>
               <Text style={[styles.cardBody, { color: colors.textSecondary }]}>
-                Best for <Text style={{ color: colors.accent, fontWeight: '800' }}>Oblong &amp; High Foreheads</Text>.
+                Best for <Text style={{ color: colors.accent, fontWeight: '800' }}>Oblong & High Foreheads</Text>.
                 A curtain fringe parts down the middle, breaking vertical elongation and optically lowering the hairline into the 33% golden balance.
               </Text>
             </View>
@@ -70,9 +70,9 @@ export function LearnHairstylesModal({ visible, onClose }: LearnHairstylesModalP
             {/* 2. Quiff & Pompadour */}
             <View style={[styles.card, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
               <Text style={[styles.tag, { color: colors.accent }]}>02 · CROWN HEIGHT</Text>
-              <Text style={[styles.cardTitle, { color: colors.text }]}>Quiff &amp; Pompadour</Text>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>Quiff & Pompadour</Text>
               <Text style={[styles.cardBody, { color: colors.textSecondary }]}>
-                Best for <Text style={{ color: colors.accent, fontWeight: '800' }}>Round &amp; Square Faces</Text>.
+                Best for <Text style={{ color: colors.accent, fontWeight: '800' }}>Round & Square Faces</Text>.
                 Elevated crown volume draws the gaze upward, stretching round silhouettes into a classical oval geometry.
               </Text>
             </View>
@@ -82,7 +82,7 @@ export function LearnHairstylesModal({ visible, onClose }: LearnHairstylesModalP
               <Text style={[styles.tag, { color: colors.accent }]}>03 · BALANCED VOLUME</Text>
               <Text style={[styles.cardTitle, { color: colors.text }]}>Textured French Crop</Text>
               <Text style={[styles.cardBody, { color: colors.textSecondary }]}>
-                Best for <Text style={{ color: colors.accent, fontWeight: '800' }}>Oval &amp; Diamond Faces</Text>.
+                Best for <Text style={{ color: colors.accent, fontWeight: '800' }}>Oval & Diamond Faces</Text>.
                 Airy, forward-falling texture provides structure at the top without adding excessive height, preserving natural symmetry.
               </Text>
             </View>
@@ -90,9 +90,9 @@ export function LearnHairstylesModal({ visible, onClose }: LearnHairstylesModalP
             {/* 4. Taper Fade */}
             <View style={[styles.card, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
               <Text style={[styles.tag, { color: colors.accent }]}>04 · LATERAL CONTOURING</Text>
-              <Text style={[styles.cardTitle, { color: colors.text }]}>Taper Fade &amp; Undercut</Text>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>Taper Fade & Undercut</Text>
               <Text style={[styles.cardBody, { color: colors.textSecondary }]}>
-                Best for <Text style={{ color: colors.accent, fontWeight: '800' }}>Wide Cheeks &amp; Round Jawlines</Text>.
+                Best for <Text style={{ color: colors.accent, fontWeight: '800' }}>Wide Cheeks & Round Jawlines</Text>.
                 Tightly clipped lateral sides slim the horizontal facial index, giving a sharper, more chiseled jaw profile.
               </Text>
             </View>

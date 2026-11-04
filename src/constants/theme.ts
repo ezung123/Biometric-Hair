@@ -7,30 +7,30 @@ import { Platform } from 'react-native';
 export type ThemeMode = 'light' | 'dark';
 
 export const Colors = {
-  // ── Luxury Cream Light Palette (Editorial, Bespoke, Warm Alabaster)
+  // ── Pearl White / Off-White with Delicate Gray Edge Accents (Minimalist iOS Luxury)
   light: {
     mode: 'light' as const,
-    bg: '#FBF9F5',                // Warm ivory / cream primary surface
-    bgElevated: '#FFFFFF',        // Pure crisp card surface
-    bgSubtle: '#F3EFE6',          // Champagne cream tint for chips & secondary buttons
-    bgSegment: '#EFEAE0',         // Segmented control track
-    border: '#E8E2D5',            // Fine warm stone border
-    borderSubtle: '#F0ECE4',      // Hairline dividers
-    text: '#1C1917',              // Deep espresso charcoal for primary typography
-    textSecondary: '#6E675F',     // Warm stone for captions and subtitles
-    textMuted: '#9E978E',         // Subtle placeholder & metadata
-    accent: '#A06E3B',            // Refined antique brass / warm gold
-    accentLight: '#F5ECE1',       // Soft gold wash
-    accentGold: '#C59A45',        // Radiant metallic gold highlight
-    accentGreen: '#2D6A4F',       // Sophisticated olive / sage for harmonic matches
-    accentGreenLight: '#E8F3ED',  // Sage wash
-    overlayLine: 'rgba(160, 110, 59, 0.55)', // Biometric guide line in light mode
-    overlayText: '#825528',
-    cardShadow: 'rgba(28, 25, 23, 0.05)',
+    bg: '#F7F8FA',                // Luminous pearl white / clean off-white background
+    bgElevated: '#FFFFFF',        // Pure crisp white card surface
+    bgSubtle: '#ECEEF2',          // Cool pearl gray tint for chips & secondary buttons
+    bgSegment: '#E3E6EB',         // Refined gray segmented control track
+    border: '#DDE1E6',            // Delicate gray accent border on the edges
+    borderSubtle: '#E8ECF0',      // Soft hairline dividers
+    text: '#111215',              // Deep graphite charcoal for ultra-crisp typography
+    textSecondary: '#5A606A',     // Cool slate gray for captions and subtitles
+    textMuted: '#8C93A0',         // Subtle metadata and placeholders
+    accent: '#181A1F',            // Sleek graphite luxury accent
+    accentLight: '#EEF1F6',       // Soft platinum wash
+    accentGold: '#B88E3E',        // Refined champagne gold highlight for match index
+    accentGreen: '#16A34A',       // Vibrant emerald for harmonic balance
+    accentGreenLight: '#E8F5E9',  // Emerald wash
+    overlayLine: 'rgba(24, 26, 31, 0.45)', // Biometric guide line in light mode
+    overlayText: '#181A1F',
+    cardShadow: 'rgba(0, 0, 0, 0.05)',
     // Compatibility aliases for Expo navigation & template components
-    background: '#FBF9F5',
-    backgroundElement: '#F3EFE6',
-    backgroundSelected: '#EFEAE0',
+    background: '#F7F8FA',
+    backgroundElement: '#ECEEF2',
+    backgroundSelected: '#E3E6EB',
   },
 
   // ── Titanium Obsidian Dark Palette (Sleek, High-End Atelier)

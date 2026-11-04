@@ -45,7 +45,7 @@ export function AboutUsModal({ visible, onClose }: AboutUsModalProps) {
           {/* Header */}
           <View style={[styles.header, { borderBottomColor: colors.border }]}>
             <View>
-              <Text style={[styles.overline, { color: colors.accent }]}>OUR MISSION &amp; STORY</Text>
+              <Text style={[styles.overline, { color: colors.accent }]}>OUR MISSION & STORY</Text>
               <Text style={[styles.title, { color: colors.text }]}>About Us</Text>
             </View>
             <Pressable
@@ -69,26 +69,52 @@ export function AboutUsModal({ visible, onClose }: AboutUsModalProps) {
               </Text>
             </View>
 
-            {/* Hackathon Architecture */}
+            {/* Hackathon Architecture & Model Truth Table */}
             <View style={[styles.card, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
-              <Text style={[styles.tag, { color: colors.accent }]}>02 · META GLOBAL AI HACKATHON</Text>
-              <Text style={[styles.cardTitle, { color: colors.text }]}>Powered by Meta Open Weights</Text>
+              <Text style={[styles.tag, { color: colors.accent }]}>02 · MODEL TRUTH TABLE</Text>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>Meta Global AI Hackathon Architecture</Text>
               <Text style={[styles.cardBody, { color: colors.textSecondary }]}>
-                Built for the Meta Global AI Developer Hackathon utilizing:
+                Complete, verifiable transparency of models, on-device compute, and cloud inference:
               </Text>
               <View style={styles.bulletList}>
                 <View style={styles.bulletRow}>
-                  <Text style={[styles.bulletDot, { color: colors.accent }]}>✦</Text>
+                  <Text style={[styles.bulletDot, { color: '#30D158' }]}>●</Text>
                   <Text style={[styles.bulletText, { color: colors.text }]}>
-                    <Text style={{ fontWeight: '800' }}>Meta Muse Spark Open (Baseten): </Text>
-                    Deep reasoning agent analyzing Neoclassical Farkas landmarks.
+                    <Text style={{ fontWeight: '800' }}>Muse Spark Open (816B): </Text>
+                    <Text style={{ color: '#30D158', fontWeight: '700' }}>[RUNNING LIVE via Baseten Grant] </Text>
+                    Meta open-weights deep reasoning LLM with native multimodal vision. Evaluates Neoclassical Farkas facial thirds and generates strictly bounded volumetric styling prescriptions.
                   </Text>
                 </View>
                 <View style={styles.bulletRow}>
-                  <Text style={[styles.bulletDot, { color: colors.accent }]}>✦</Text>
+                  <Text style={[styles.bulletDot, { color: '#30D158' }]}>●</Text>
                   <Text style={[styles.bulletText, { color: colors.text }]}>
-                    <Text style={{ fontWeight: '800' }}>Meta SAM 3.1 &amp; Inpainting (Modal GPU): </Text>
-                    Zero-shot scalp segmentation and generative hairstyle try-on.
+                    <Text style={{ fontWeight: '800' }}>MediaPipe FaceLandmarker: </Text>
+                    <Text style={{ color: '#30D158', fontWeight: '700' }}>[RUNNING ON-DEVICE] </Text>
+                    Real-time WebAssembly pipeline tracking 468 3D landmarks, Euler angles (pitch, yaw, roll), bizygomatic width, and trichion-to-gnathion facial thirds.
+                  </Text>
+                </View>
+                <View style={styles.bulletRow}>
+                  <Text style={[styles.bulletDot, { color: '#FF9F0A' }]}>●</Text>
+                  <Text style={[styles.bulletText, { color: colors.text }]}>
+                    <Text style={{ fontWeight: '800' }}>Meta Muse Image: </Text>
+                    <Text style={{ color: '#FF9F0A', fontWeight: '700' }}>[PROXY READY] </Text>
+                    Instruction-based hairstyle editing adapter wired through server proxy. Activates with OpenRouter key in .env; editorial lookbook displayed otherwise.
+                  </Text>
+                </View>
+                <View style={styles.bulletRow}>
+                  <Text style={[styles.bulletDot, { color: colors.accent }]}>●</Text>
+                  <Text style={[styles.bulletText, { color: colors.text }]}>
+                    <Text style={{ fontWeight: '800' }}>Procedural Web Audio API: </Text>
+                    <Text style={{ color: colors.accent, fontWeight: '700' }}>[ON-DEVICE SYNTHESIS] </Text>
+                    Real-time hardware-accelerated acoustic feedback (220Hz-440Hz biometric scan drone & dual-click mechanical shutter).
+                  </Text>
+                </View>
+                <View style={styles.bulletRow}>
+                  <Text style={[styles.bulletDot, { color: colors.accent }]}>●</Text>
+                  <Text style={[styles.bulletText, { color: colors.text }]}>
+                    <Text style={{ fontWeight: '800' }}>Neoclassical Anthropometrics: </Text>
+                    <Text style={{ color: colors.accent, fontWeight: '700' }}>[LOCAL DETERMINISTIC ENGINE] </Text>
+                    Instant zero-latency mathematical rule engine based on Renaissance Farkas proportions (1:1:1 thirds & 1.35 facial index) as offline fallback.
                   </Text>
                 </View>
               </View>

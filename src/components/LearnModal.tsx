@@ -84,7 +84,7 @@ export function LearnModal({ visible, onClose }: LearnModalProps) {
               </View>
 
               <Text style={[styles.tipText, { color: colors.textSecondary }]}>
-                💡 If your upper third is larger than 35%, a curtain fringe or textured crop visually lowers your hairline to restore perfect balance.
+                Note: If your upper third is larger than 35%, a curtain fringe or textured crop visually lowers your hairline to restore perfect balance.
               </Text>
             </View>
 
@@ -96,17 +96,17 @@ export function LearnModal({ visible, onClose }: LearnModalProps) {
               <View style={styles.rulesList}>
                 <View style={styles.ruleItem}>
                   <Text style={[styles.ruleShape, { color: colors.text }]}>OBLONG</Text>
-                  <Text style={[styles.ruleDo, { color: colors.accentGreen }]}>✓ Add fringe &amp; side width</Text>
+                  <Text style={[styles.ruleDo, { color: colors.accentGreen }]}>✓ Add fringe & side width</Text>
                   <Text style={[styles.ruleDont, { color: colors.textMuted }]}>✕ Avoid tall quiffs</Text>
                 </View>
                 <View style={styles.ruleItem}>
                   <Text style={[styles.ruleShape, { color: colors.text }]}>ROUND</Text>
-                  <Text style={[styles.ruleDo, { color: colors.accentGreen }]}>✓ Add crown height &amp; tight fade</Text>
+                  <Text style={[styles.ruleDo, { color: colors.accentGreen }]}>✓ Add crown height & tight fade</Text>
                   <Text style={[styles.ruleDont, { color: colors.textMuted }]}>✕ Avoid wide side volume</Text>
                 </View>
                 <View style={styles.ruleItem}>
                   <Text style={[styles.ruleShape, { color: colors.text }]}>SQUARE</Text>
-                  <Text style={[styles.ruleDo, { color: colors.accentGreen }]}>✓ Soft texturing &amp; curved flow</Text>
+                  <Text style={[styles.ruleDo, { color: colors.accentGreen }]}>✓ Soft texturing & curved flow</Text>
                   <Text style={[styles.ruleDont, { color: colors.textMuted }]}>✕ Avoid sharp boxy edges</Text>
                 </View>
                 <View style={styles.ruleItem}>

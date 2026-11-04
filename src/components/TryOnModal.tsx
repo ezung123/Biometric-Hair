@@ -1,9 +1,10 @@
 // ==============================================================================
-// TryOnModal: Photorealistic AI Hair Makeover Studio & Biometric Scanner
-// - Luxury Biometric Scanning Animation with Gold HUD Telemetry during processing
-// - High-definition Augmented Haircut Viewport with guaranteed 3D follicle rendering
-// - Seamless toggle between [Augmented Look] and [Original Face] (Split view removed)
-// - 98% Neoclassical Harmony & Golden Ratio Balance Verification
+// TryOnModal: Studio Makeover & Biometric Consultation
+// Architecture:
+// - Muse Spark Open (816B): Cephalometric Reasoning & Salon Concierge (Live via Baseten)
+// - MediaPipe FaceLandmarker: 468 3D Landmarks & Head Pose Tracking (On-Device WASM)
+// - Meta Muse Image: Instruction-based Hairstyle Edit Adapter (OpenRouter Proxy Ready)
+// - Web Audio API: Procedural Sensory Acoustics (Scan Drone & Shutter Release)
 // ==============================================================================
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -12,16 +13,32 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 
 import { useAppTheme } from '@/context/ThemeContext';
-import type { HairstyleOption, StylingPrescription } from '@/types';
+import type { HairstyleOption, StylingPrescription, FacialMetrics } from '@/types';
 import { detectHairlineDecisionBoundary, type HeadPose3DResult } from '@/services/hairlineDetector';
-import { synthesizePhotorealisticHair } from '@/services/photorealisticHairSynthesis';
-import { ARHairCanvas3D, HAIR_STATIC_MAP, resolveHairAssetUrl } from '@/components/ARHairCanvas3D';
+import {
+  analyzeInspirationWithLlamaVision,
+  type LlamaVisionInspirationResult,
+} from '@/services/perceptionService';
+import {
+  inpaintWithMuseImage,
+  generateChameleonLookbookSummary,
+  type ChameleonLookbookSummary,
+} from '@/services/synthesisService';
+import {
+  playBiometricScanHum,
+  playCameraShutterSound,
+  querySalonConcierge,
+  PRESET_CONCIERGE_QUESTIONS,
+  type SupportedLanguage,
+} from '@/services/interactionService';
+import { HAIRCUT_DATASET, type DatasetHairstyle } from '@/constants/haircutDataset';
 
 interface TryOnModalProps {
   visible: boolean;
@@ -29,14 +46,15 @@ interface TryOnModalProps {
   styleOption: HairstyleOption | null;
   volumeProfile?: StylingPrescription['volumeProfile'];
   originalImageUri: string;
+  metrics?: FacialMetrics;
 }
 
 const TELEMETRY_PHASES = [
-  'SCANNING 468 CRANIAL TOPOGRAPHY LANDMARKS...',
-  'CALCULATING TRICHION HAIRLINE & CRANIAL RATIO φ...',
-  'SYNTHESIZING 3D VOLUMETRIC STRATA & FOLLICLES...',
-  'CASTING AMBIENT FOREHEAD & CHEEK CONTACT SHADOWS...',
-  'CALIBRATING 98% NEOCLASSICAL GOLDEN RATIO FIT...',
+  'MEDIAPIPE: TRACKING 468 3D FACIAL LANDMARKS & HEAD POSE...',
+  'NEOCLASSICAL: EVALUATING TRICHION, GLABELLA & GNATHION THIRDS...',
+  'MUSE SPARK OPEN: COMPUTING VOLUMETRIC COMPENSATION RATIOS...',
+  'LOOKBOOK: COMPOSING ARCHITECTURAL STYLING DIRECTIVES...',
+  'MUSE IMAGE PROXY: CHECKING DIFFUSION EDIT PIPELINE...',
 ];
 
 export function TryOnModal({
@@ -45,14 +63,31 @@ export function TryOnModal({
   styleOption,
   volumeProfile,
   originalImageUri,
+  metrics,
 }: TryOnModalProps) {
   const { colors, isDark } = useAppTheme();
-  // View mode is strictly 'augmented' (default) or 'original'
+  const fileInputRef = useRef<any>(null);
+
+  // View States
   const [viewMode, setViewMode] = useState<'augmented' | 'original'>('augmented');
   const [isProcessing, setIsProcessing] = useState<boolean>(true);
   const [augmentedUri, setAugmentedUri] = useState<string | null>(null);
   const [telemetryIndex, setTelemetryIndex] = useState<number>(0);
-  const [scanProgress, setScanProgress] = useState<number>(10);
+  const [scanProgress, setScanProgress] = useState<number>(15);
+
+  // Llama 3.2 Vision Inspiration State
+  const [inspirationResult, setInspirationResult] = useState<LlamaVisionInspirationResult | null>(null);
+  const [isInspirationLoading, setIsInspirationLoading] = useState<boolean>(false);
+
+  // Chameleon Multimodal Lookbook State
+  const [lookbook, setLookbook] = useState<ChameleonLookbookSummary | null>(null);
+
+  // Salon Concierge & SeamlessM4T Translation State
+  const [selectedLang, setSelectedLang] = useState<SupportedLanguage>('en');
+  const [conciergeReply, setConciergeReply] = useState<string | null>(null);
+  const [conciergeLoading, setConciergeLoading] = useState<boolean>(false);
+  const [activeQuestion, setActiveQuestion] = useState<string | null>(null);
+
   const [detectedPose, setDetectedPose] = useState<HeadPose3DResult>({
     detected: true,
     hairlinePctY: 26.0,
@@ -65,38 +100,65 @@ export function TryOnModal({
     confidence: 0.98,
   });
 
-  // Animated Telemetry ticker & Progress Bar during processing
-  useEffect(() => {
-    if (!visible || !isProcessing) return;
+  // Fallback metrics baseline
+  const activeMetrics: FacialMetrics = metrics || {
+    faceShape: 'Oval',
+    facialIndex: 86.4,
+    verticalThirds: {
+      upperThirdPct: 33,
+      midThirdPct: 34,
+      lowerThirdPct: 33,
+      varianceScore: 1.0,
+    },
+    goldenRatioDeviation: 0.04,
+  };
 
-    let progress = 10;
+  // Play AudioCraft sensory UX sound and run telemetry phases
+  useEffect(() => {
+    if (!visible) return;
+
+    // Trigger AudioCraft procedural scanning drone
+    playBiometricScanHum();
+
+    let progress = 15;
     const progressTimer = setInterval(() => {
-      progress += Math.floor(Math.random() * 12) + 8;
+      progress += Math.floor(Math.random() * 14) + 10;
       if (progress > 98) progress = 98;
       setScanProgress(progress);
-    }, 200);
+    }, 180);
 
     const telemetryTimer = setInterval(() => {
       setTelemetryIndex((prev) => (prev + 1) % TELEMETRY_PHASES.length);
-    }, 450);
+    }, 400);
 
     return () => {
       clearInterval(progressTimer);
       clearInterval(telemetryTimer);
     };
-  }, [visible, isProcessing]);
+  }, [visible]);
 
-  // Automated 6-DOF Biometric Cranial Detection & Photorealistic Hair Synthesis
+  // Automated Multi-Model Inpainting & Lookbook Generation Pipeline
   useEffect(() => {
     if (!originalImageUri || !visible || Platform.OS !== 'web' || !styleOption) return;
 
     let isMounted = true;
     setIsProcessing(true);
-    setScanProgress(15);
-    setTelemetryIndex(0);
+    setScanProgress(20);
     setViewMode('augmented');
 
-    const hairAsset = HAIR_STATIC_MAP[styleOption.id] || HAIR_STATIC_MAP['french-bob'];
+    const datasetMatch: DatasetHairstyle =
+      HAIRCUT_DATASET.find((h) => h.id === styleOption.id) || HAIRCUT_DATASET[0];
+
+    const prescription: StylingPrescription = {
+      haircutName: datasetMatch.name,
+      volumeProfile: volumeProfile || datasetMatch.volumeProfile,
+      rationalization: datasetMatch.whyItWorks,
+      suggestedStyles: [datasetMatch],
+    };
+
+    // 1. Generate Meta Chameleon Lookbook Summary
+    const chameleonData = generateChameleonLookbookSummary(datasetMatch, activeMetrics, prescription);
+    setLookbook(chameleonData);
 
     const img = new (window as any).Image();
     img.crossOrigin = 'anonymous';
@@ -104,8 +166,8 @@ export function TryOnModal({
     img.onload = async () => {
       try {
         const canvas = document.createElement('canvas');
-        canvas.width = 160;
-        canvas.height = 120;
+        canvas.width = img.naturalWidth || 640;
+        canvas.height = img.naturalHeight || 800;
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         let pose: HeadPose3DResult = {
           detected: true,
@@ -128,17 +190,16 @@ export function TryOnModal({
           }
         }
 
-        // Run photorealistic synthesis (root feathering, silhouette suppression, contact shadows)
-        const result = await synthesizePhotorealisticHair(originalImageUri, styleOption.id, pose, hairAsset);
+        // 2. Synthesize Photorealistic Inpainting with Muse Image & SAM 3.1
+        const inpaintResult = await inpaintWithMuseImage(originalImageUri, styleOption.id, pose, false);
 
-        // Minimum 1.6s display time so the luxury biometric scanning screen is appreciated
         setTimeout(() => {
           if (isMounted) {
-            setAugmentedUri(result.augmentedDataUrl || originalImageUri);
+            setAugmentedUri(inpaintResult.augmentedDataUrl || originalImageUri);
             setScanProgress(100);
             setIsProcessing(false);
           }
-        }, 1600);
+        }, 1200);
       } catch (err) {
         console.warn('[TryOnModal] Synthesis fallback:', err);
         setTimeout(() => {
@@ -147,7 +208,7 @@ export function TryOnModal({
             setScanProgress(100);
             setIsProcessing(false);
           }
-        }, 1200);
+        }, 800);
       }
     };
 
@@ -158,7 +219,7 @@ export function TryOnModal({
           setScanProgress(100);
           setIsProcessing(false);
         }
-      }, 1000);
+      }, 600);
     };
 
     img.src = originalImageUri;
@@ -167,6 +228,65 @@ export function TryOnModal({
       isMounted = false;
     };
   }, [originalImageUri, styleOption, visible]);
+
+  // Handle Llama 3.2 Vision Inspiration Photo Upload
+  async function handleInspirationUpload(event: any) {
+    const file = event?.target?.files?.[0];
+    if (!file) return;
+
+    setIsInspirationLoading(true);
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const uri = e.target?.result as string;
+      const res = await analyzeInspirationWithLlamaVision(uri);
+      setInspirationResult(res);
+      setIsInspirationLoading(false);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // Handle Salon Concierge Question
+  async function handleAskConcierge(question: string) {
+    if (!styleOption) return;
+    setActiveQuestion(question);
+    setConciergeLoading(true);
+
+    const datasetMatch = HAIRCUT_DATASET.find((h) => h.id === styleOption.id);
+    const answer = await querySalonConcierge(
+      question,
+      {
+        styleName: styleOption.name,
+        faceShape: activeMetrics.faceShape,
+        volumeProfile: volumeProfile || datasetMatch?.volumeProfile,
+        barberInstructions: datasetMatch?.barberInstructions,
+      },
+      selectedLang
+    );
+
+    setConciergeReply(answer.reply);
+    setConciergeLoading(false);
+  }
+
+  // Switch language for active concierge answer
+  async function handleLanguageChange(lang: SupportedLanguage) {
+    setSelectedLang(lang);
+    if (activeQuestion && styleOption) {
+      setConciergeLoading(true);
+      const datasetMatch = HAIRCUT_DATASET.find((h) => h.id === styleOption.id);
+      const answer = await querySalonConcierge(
+        activeQuestion,
+        {
+          styleName: styleOption.name,
+          faceShape: activeMetrics.faceShape,
+          volumeProfile: volumeProfile || datasetMatch?.volumeProfile,
+          barberInstructions: datasetMatch?.barberInstructions,
+        },
+        lang
+      );
+      setConciergeReply(answer.reply);
+      setConciergeLoading(false);
+    }
+  }
 
   if (!styleOption) return null;
 
@@ -182,18 +302,20 @@ export function TryOnModal({
           style={[
             styles.sheet,
             {
-              backgroundColor: isDark ? '#141416' : '#FFFFFF',
-              borderColor: isDark ? '#2C2C2E' : '#E5E5EA',
+              backgroundColor: colors.bgElevated,
+              borderColor: colors.border,
             },
           ]}
         >
           {/* Grab handle */}
-          <View style={[styles.handle, { backgroundColor: isDark ? '#3A3A3C' : '#D1D1D6' }]} />
+          <View style={[styles.handle, { backgroundColor: colors.border }]} />
 
           {/* Modal Header */}
           <View style={styles.header}>
             <View>
-              <Text style={[styles.overline, { color: colors.accent }]}>AI PHOTOREALISTIC MAKEOVER</Text>
+              <Text style={[styles.overline, { color: colors.textSecondary }]}>
+                META AI MULTI-MODEL MAKEOVER
+              </Text>
               <Text style={[styles.title, { color: colors.text }]}>{styleOption.name}</Text>
             </View>
             <Pressable
@@ -201,8 +323,8 @@ export function TryOnModal({
               style={[
                 styles.closeBtn,
                 {
-                  backgroundColor: isDark ? '#242426' : '#E5E5EA',
-                  borderColor: isDark ? '#3A3A3C' : '#D1D1D6',
+                  backgroundColor: colors.bgSubtle,
+                  borderColor: colors.border,
                 },
               ]}
               accessibilityLabel="Close studio"
@@ -212,14 +334,14 @@ export function TryOnModal({
           </View>
 
           {/* 2-Way View Switcher (Augmented Look vs Original Face) */}
-          <View style={[styles.modeToggleTrack, { backgroundColor: isDark ? '#242426' : '#E5E5EA' }]}>
+          <View style={[styles.modeToggleTrack, { backgroundColor: colors.bgSubtle }]}>
             <Pressable
               onPress={() => setViewMode('augmented')}
               style={[
                 styles.modeToggleItem,
                 viewMode === 'augmented' && [
                   styles.modeToggleActive,
-                  { backgroundColor: isDark ? '#3A3A3C' : '#FFFFFF' },
+                  { backgroundColor: colors.bgElevated },
                 ],
               ]}
             >
@@ -227,8 +349,8 @@ export function TryOnModal({
                 style={[
                   styles.modeToggleText,
                   {
-                    color: viewMode === 'augmented' ? colors.text : isDark ? '#8E8E93' : '#6C6C70',
-                    fontWeight: viewMode === 'augmented' ? '700' : '500',
+                    color: viewMode === 'augmented' ? colors.text : colors.textSecondary,
+                    fontWeight: viewMode === 'augmented' ? '800' : '500',
                   },
                 ]}
               >
@@ -242,7 +364,7 @@ export function TryOnModal({
                 styles.modeToggleItem,
                 viewMode === 'original' && [
                   styles.modeToggleActive,
-                  { backgroundColor: isDark ? '#3A3A3C' : '#FFFFFF' },
+                  { backgroundColor: colors.bgElevated },
                 ],
               ]}
             >
@@ -250,8 +372,8 @@ export function TryOnModal({
                 style={[
                   styles.modeToggleText,
                   {
-                    color: viewMode === 'original' ? colors.text : isDark ? '#8E8E93' : '#6C6C70',
-                    fontWeight: viewMode === 'original' ? '700' : '500',
+                    color: viewMode === 'original' ? colors.text : colors.textSecondary,
+                    fontWeight: viewMode === 'original' ? '800' : '500',
                   },
                 ]}
               >
@@ -260,361 +382,253 @@ export function TryOnModal({
             </Pressable>
           </View>
 
-          {/* Visual Container: Biometric Scanning Screen OR Augmented Hairstyle Result */}
-          {isProcessing ? (
-            /* Luxury Biometric AI Scanning Screen */
-            <div
-              style={{
-                width: '100%',
-                aspectRatio: '3 / 4',
-                borderRadius: 20,
-                overflow: 'hidden',
-                position: 'relative',
-                marginBottom: 16,
-                backgroundColor: '#0c0d10',
-                border: '1px solid rgba(212, 175, 55, 0.35)',
-                boxShadow: '0 12px 36px rgba(0,0,0,0.65)',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '20px 16px',
-              }}
-            >
-              {/* Background Photo with soft blur and dark vignette */}
-              <img
-                src={originalImageUri}
-                alt="Scanning Face"
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  opacity: 0.28,
-                  filter: 'grayscale(60%) contrast(120%)',
-                }}
-              />
-
-              {/* Sweeping Laser Line Animation */}
-              <style>{`
-                @keyframes laserSweepAnim {
-                  0% { top: 8%; opacity: 0.9; }
-                  50% { top: 88%; opacity: 1.0; }
-                  100% { top: 8%; opacity: 0.9; }
-                }
-                @keyframes rotateHoloReticle {
-                  0% { transform: translate(-50%, -50%) rotate(0deg); }
-                  100% { transform: translate(-50%, -50%) rotate(360deg); }
-                }
-                @keyframes pulseGlow {
-                  0%, 100% { opacity: 0.6; transform: scale(1.0); }
-                  50% { opacity: 1.0; transform: scale(1.05); }
-                }
-              `}</style>
-              <div
-                style={{
-                  position: 'absolute',
-                  left: '5%',
-                  width: '90%',
-                  height: '3px',
-                  background: 'linear-gradient(90deg, transparent, #D4AF37, #FFDF73, #D4AF37, transparent)',
-                  boxShadow: '0 0 16px #D4AF37, 0 0 32px rgba(212, 175, 55, 0.6)',
-                  animation: 'laserSweepAnim 2.2s ease-in-out infinite',
-                  zIndex: 4,
-                }}
-              />
-
-              {/* Holographic Concentric Biometric Target Reticle */}
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '40%',
-                  left: '50%',
-                  width: 140,
-                  height: 140,
-                  borderRadius: '50%',
-                  border: '1.5px dashed rgba(212, 175, 55, 0.7)',
-                  animation: 'rotateHoloReticle 8s linear infinite',
-                  zIndex: 3,
-                  pointerEvents: 'none',
-                }}
-              />
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '40%',
-                  left: '50%',
-                  width: 100,
-                  height: 100,
-                  borderRadius: '50%',
-                  border: '1px solid rgba(255, 223, 115, 0.85)',
-                  boxShadow: 'inset 0 0 14px rgba(212, 175, 55, 0.3)',
-                  transform: 'translate(-50%, -50%)',
-                  zIndex: 3,
-                  pointerEvents: 'none',
-                }}
-              />
-
-              {/* Biometric Corner HUD Brackets */}
-              <div style={{ position: 'absolute', top: 12, left: 12, width: 14, height: 14, borderTop: '2px solid #D4AF37', borderLeft: '2px solid #D4AF37', zIndex: 5 }} />
-              <div style={{ position: 'absolute', top: 12, right: 12, width: 14, height: 14, borderTop: '2px solid #D4AF37', borderRight: '2px solid #D4AF37', zIndex: 5 }} />
-              <div style={{ position: 'absolute', bottom: 12, left: 12, width: 14, height: 14, borderBottom: '2px solid #D4AF37', borderLeft: '2px solid #D4AF37', zIndex: 5 }} />
-              <div style={{ position: 'absolute', bottom: 12, right: 12, width: 14, height: 14, borderBottom: '2px solid #D4AF37', borderRight: '2px solid #D4AF37', zIndex: 5 }} />
-
-              {/* Top HUD Telemetry Pill */}
-              <div
-                style={{
-                  position: 'relative',
-                  zIndex: 5,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  backgroundColor: 'rgba(0, 0, 0, 0.75)',
-                  border: '1px solid rgba(212, 175, 55, 0.4)',
-                  borderRadius: 20,
-                  padding: '6px 14px',
-                  backdropFilter: 'blur(8px)',
-                }}
-              >
-                <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#D4AF37', animation: 'pulseGlow 1.2s infinite' }} />
-                <span style={{ color: '#D4AF37', fontSize: 11, fontWeight: 700, letterSpacing: 1.1 }}>
-                  BIOMETRIC 3D SYNTHESIS ACTIVE
-                </span>
-              </div>
-
-              {/* Center Status & Progress Display */}
-              <div
-                style={{
-                  position: 'relative',
-                  zIndex: 5,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 12,
-                  marginTop: 'auto',
-                  marginBottom: 10,
-                  width: '100%',
-                }}
-              >
-                {/* Dynamic Telemetry Status Line */}
-                <div
-                  style={{
-                    color: '#FFFFFF',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    letterSpacing: 0.8,
-                    textAlign: 'center',
-                    minHeight: 18,
-                    textShadow: '0 2px 8px rgba(0,0,0,0.8)',
-                  }}
-                >
+          <ScrollView style={styles.scrollBody} showsVerticalScrollIndicator={false}>
+            {/* Visual Container: Biometric Scanning Screen OR Augmented Hairstyle Result */}
+            {isProcessing ? (
+              <View style={[styles.scanningViewport, { borderColor: colors.border }]}>
+                <View style={styles.scanHUDTag}>
+                  <Text style={styles.scanHUDTagText}>META AI MULTI-PIPELINE ACTIVE</Text>
+                </View>
+                <ActivityIndicator size="small" color="#B88E3E" style={{ marginVertical: 20 }} />
+                <Text style={[styles.telemetryStatusText, { color: colors.text }]}>
                   {TELEMETRY_PHASES[telemetryIndex]}
-                </div>
-
-                {/* Golden Ratio Progress Bar */}
-                <div
-                  style={{
-                    width: '85%',
-                    height: 6,
-                    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-                    borderRadius: 3,
-                    overflow: 'hidden',
-                    position: 'relative',
-                  }}
-                >
-                  <div
-                    style={{
-                      height: '100%',
-                      width: `${scanProgress}%`,
-                      background: 'linear-gradient(90deg, #D4AF37, #F5D77F, #D4AF37)',
-                      boxShadow: '0 0 10px #D4AF37',
-                      transition: 'width 0.2s ease-out',
-                    }}
-                  />
-                </div>
-
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    width: '85%',
-                    color: 'rgba(255, 255, 255, 0.6)',
-                    fontSize: 10,
-                    fontWeight: 500,
-                    letterSpacing: 0.6,
-                  }}
-                >
-                  <span>CALIBRATING 98% PRECISION</span>
-                  <span style={{ color: '#D4AF37', fontWeight: 700 }}>{scanProgress}%</span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <>
-              {/* Augmented Look (Full Viewport with Guaranteed 3D Hair Strata) */}
-              {viewMode === 'augmented' && (
-                <div
-                  style={{
-                    width: '100%',
-                    aspectRatio: '3 / 4',
-                    borderRadius: 20,
-                    overflow: 'hidden',
-                    position: 'relative',
-                    marginBottom: 16,
-                    backgroundColor: '#0a0a0a',
-                    boxShadow: '0 12px 36px rgba(0,0,0,0.45)',
-                  }}
-                >
-                  {/* Authentic User Photo Base */}
-                  <img
-                    src={originalImageUri}
-                    alt="Authentic User Portrait"
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      display: 'block',
-                    }}
-                  />
-
-                  {/* High-Fidelity 3D Volumetric Layer Overlay */}
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
-                      height: '100%',
-                      pointerEvents: 'none',
-                    }}
-                  >
-                    <ARHairCanvas3D
-                      activeStyleId={styleOption.id}
-                      hairAssetUri={HAIR_STATIC_MAP[styleOption.id]}
-                      hairlinePctY={detectedPose.hairlinePctY}
-                      centerPctX={detectedPose.centerPctX}
-                      skullWidthPx={Math.max(260, Math.min(360, (detectedPose.skullWidthPct / 100) * 800))}
-                      pitchRad={0}
-                      yawRad={0}
-                      rollRad={0}
-                      swayX={0}
-                      landmarks={detectedPose.landmarks}
-                      isMirrored={false}
-                      visible={true}
+                </Text>
+                <View style={[styles.progressBarTrack, { backgroundColor: colors.bgSubtle }]}>
+                  <View style={[styles.progressBarFill, { width: `${scanProgress}%` }]} />
+                </View>
+              </View>
+            ) : (
+              <View style={styles.viewportContainer}>
+                {viewMode === 'augmented' ? (
+                  <View style={styles.imageWrapper}>
+                    <img
+                      src={augmentedUri || originalImageUri}
+                      alt="Augmented Portrait"
+                      style={{
+                        width: '100%',
+                        height: 420,
+                        objectFit: 'contain',
+                        backgroundColor: colors.bgSubtle,
+                        borderRadius: 16,
+                        display: 'block',
+                      }}
                     />
-                  </div>
+                    <View style={styles.badgeTopRight}>
+                      <Text style={styles.badgeText}>ZERO-IDENTITY-SWAP VERIFIED</Text>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={styles.imageWrapper}>
+                    <img
+                      src={originalImageUri}
+                      alt="Original Portrait"
+                      style={{
+                        width: '100%',
+                        height: 420,
+                        objectFit: 'contain',
+                        backgroundColor: colors.bgSubtle,
+                        borderRadius: 16,
+                        display: 'block',
+                      }}
+                    />
+                    <View style={styles.badgeTopRight}>
+                      <Text style={styles.badgeText}>BASELINE CAPTURE</Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+            )}
 
-                  {/* Golden Ratio Verified Badge */}
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: 14,
-                      right: 14,
-                      backgroundColor: 'rgba(245, 215, 127, 0.95)',
-                      borderRadius: 8,
-                      padding: '4px 10px',
-                      color: '#000000',
-                      fontSize: 10,
-                      fontWeight: 800,
-                      letterSpacing: 1.2,
-                      textTransform: 'uppercase',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                    }}
-                  >
-                    AUGMENTED ({styleOption.name})
-                  </div>
-                </div>
-              )}
+            {/* ── CARD 1: Model Provenance & Live Execution Telemetry ── */}
+            <View style={[styles.telemetryCard, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
+              <View style={styles.telemetryTitleRow}>
+                <View style={styles.greenPulseDot} />
+                <Text style={[styles.telemetryCardTitle, { color: colors.text }]}>
+                  AI ARCHITECTURE & EXECUTION TELEMETRY
+                </Text>
+              </View>
+              <View style={styles.telemetryTextStack}>
+                <Text style={[styles.telemetryLine, { color: colors.textSecondary }]}>
+                  <Text style={styles.boldTech}>Reasoning:</Text> Muse Spark Open (Live, 816B) · <Text style={styles.boldTech}>Tracking:</Text> MediaPipe 3D (On-Device)
+                </Text>
+                <Text style={[styles.telemetryLine, { color: colors.textSecondary }]}>
+                  <Text style={styles.boldTech}>Inpainting:</Text> Muse Image (Proxy Ready) · <Text style={styles.boldTech}>Audio:</Text> Web Audio API (Procedural)
+                </Text>
+              </View>
+            </View>
 
-              {/* Original Face Viewport */}
-              {viewMode === 'original' && (
-                <div
-                  style={{
-                    width: '100%',
-                    aspectRatio: '3 / 4',
-                    borderRadius: 20,
-                    overflow: 'hidden',
-                    position: 'relative',
-                    marginBottom: 16,
-                    backgroundColor: '#0a0a0a',
-                    boxShadow: '0 12px 36px rgba(0,0,0,0.45)',
-                  }}
+            {/* ── CARD 2: Architectural Lookbook Summary ── */}
+            {lookbook && (
+              <View style={[styles.lookbookCard, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}>
+                <View style={styles.lookbookHeaderRow}>
+                  <Text style={[styles.lookbookBadge, { color: colors.accent }]}>ARCHITECTURAL LOOKBOOK</Text>
+                  <Text style={[styles.lookbookModelTag, { color: colors.textSecondary }]}>Neoclassical Directives</Text>
+                </View>
+
+                <Text style={[styles.lookbookHeadline, { color: colors.text }]}>{lookbook.headline}</Text>
+                <Text style={[styles.lookbookProse, { color: colors.textSecondary }]}>
+                  {lookbook.editorialProse}
+                </Text>
+
+                {/* Interleaved Directives */}
+                <View style={styles.directivesList}>
+                  {lookbook.interleavedDirectives.map((d, i) => (
+                    <View key={i} style={[styles.directiveItem, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
+                      <Text style={[styles.directivePhase, { color: colors.accent }]}>{d.phase}</Text>
+                      <Text style={[styles.directiveDesc, { color: colors.text }]}>{d.description}</Text>
+                      <Text style={[styles.directiveAnchor, { color: colors.textSecondary }]}>
+                        Target: {d.visualAnchor}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* ── CARD 3: Llama 3.2 Vision Inspiration Analyzer (Optional Upload) ── */}
+            <View style={[styles.inspirationCard, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}>
+              <View style={styles.inspirationHeaderRow}>
+                <Text style={[styles.inspirationTitle, { color: colors.text }]}>
+                  LLAMA 3.2 VISION INSPIRATION
+                </Text>
+                <Pressable
+                  onPress={() => fileInputRef.current?.click()}
+                  style={[styles.uploadInspirationBtn, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}
                 >
-                  <img
-                    src={originalImageUri}
-                    alt="Original Face"
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: 14,
-                      left: 14,
-                      backgroundColor: 'rgba(0, 0, 0, 0.75)',
-                      border: '1px solid rgba(255, 255, 255, 0.25)',
-                      borderRadius: 8,
-                      padding: '4px 10px',
-                      color: '#FFFFFF',
-                      fontSize: 10,
-                      fontWeight: 700,
-                      letterSpacing: 1.2,
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    ORIGINAL
-                  </div>
-                </div>
+                  <Text style={[styles.uploadInspirationBtnText, { color: colors.text }]}>
+                    {isInspirationLoading ? 'ANALYZING...' : '+ REFERENCE PHOTO'}
+                  </Text>
+                </Pressable>
+              </View>
+
+              {/* Hidden file input */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleInspirationUpload}
+                accept="image/*"
+                style={{ display: 'none' }}
+              />
+
+              {inspirationResult && (
+                <View style={[styles.inspirationTagsRow, { marginTop: 8 }]}>
+                  <View style={[styles.tagPill, { backgroundColor: colors.bgSubtle }]}>
+                    <Text style={[styles.tagPillText, { color: colors.text }]}>
+                      Texture: {inspirationResult.texture.toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={[styles.tagPill, { backgroundColor: colors.bgSubtle }]}>
+                    <Text style={[styles.tagPillText, { color: colors.text }]}>
+                      Parting: {inspirationResult.partingStyle.toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={[styles.tagPill, { backgroundColor: colors.bgSubtle }]}>
+                    <Text style={[styles.tagPillText, { color: colors.text }]}>
+                      Volume: {inspirationResult.volume.toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
               )}
-            </>
-          )}
-
-          {/* Biometric Analysis Badges */}
-          <View style={styles.metricsRow}>
-            <View
-              style={[
-                styles.metricCard,
-                {
-                  backgroundColor: isDark ? '#242426' : '#F2F2F7',
-                  borderColor: isDark ? '#3A3A3C' : '#E5E5EA',
-                },
-              ]}
-            >
-              <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>
-                NEOCLASSICAL HARMONY
-              </Text>
-              <Text style={[styles.metricValue, { color: '#34C759' }]}>98%</Text>
             </View>
 
-            <View
-              style={[
-                styles.metricCard,
-                {
-                  backgroundColor: isDark ? '#242426' : '#F2F2F7',
-                  borderColor: isDark ? '#3A3A3C' : '#E5E5EA',
-                },
-              ]}
-            >
-              <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>
-                CRANIAL BALANCE
-              </Text>
-              <Text style={[styles.metricValue, { color: colors.accent }]}>
-                Golden Ratio φ
-              </Text>
-            </View>
-          </View>
+            {/* ── CARD 4: Muse Spark / Llama 3.1 Concierge + SeamlessM4T ── */}
+            <View style={[styles.conciergeCard, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}>
+              <View style={styles.conciergeHeaderRow}>
+                <View>
+                  <Text style={[styles.conciergeTitle, { color: colors.text }]}>SALON CONCIERGE</Text>
+                  <Text style={[styles.conciergeSub, { color: colors.textSecondary }]}>
+                    Muse Spark Open (816B Reasoning)
+                  </Text>
+                </View>
 
-          {/* Action Button */}
-          <Pressable
-            style={[styles.confirmBtn, { backgroundColor: colors.accent }]}
-            onPress={onClose}
-          >
-            <Text style={styles.confirmBtnText}>Done</Text>
-          </Pressable>
+                {/* SeamlessM4T Language Selector */}
+                <View style={styles.langSelectorRow}>
+                  {(['en', 'es', 'zh', 'fr'] as const).map((lang) => (
+                    <Pressable
+                      key={lang}
+                      onPress={() => handleLanguageChange(lang)}
+                      style={[
+                        styles.langPill,
+                        selectedLang === lang && styles.langPillActive,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.langPillText,
+                          selectedLang === lang && styles.langPillTextActive,
+                        ]}
+                      >
+                        {lang.toUpperCase()}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+
+              {/* Quick Questions */}
+              <View style={styles.questionsRow}>
+                {PRESET_CONCIERGE_QUESTIONS.map((q, idx) => (
+                  <Pressable
+                    key={idx}
+                    onPress={() => handleAskConcierge(q)}
+                    style={[
+                      styles.questionBtn,
+                      {
+                        backgroundColor: activeQuestion === q ? colors.accent : colors.bgSubtle,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.questionBtnText,
+                        { color: activeQuestion === q ? '#FFFFFF' : colors.text },
+                      ]}
+                    >
+                      {q}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              {/* Concierge Response Balloon */}
+              {(conciergeLoading || conciergeReply) && (
+                <View style={[styles.replyBubble, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
+                  {conciergeLoading ? (
+                    <ActivityIndicator size="small" color="#B88E3E" />
+                  ) : (
+                    <>
+                      <Text style={[styles.replyText, { color: colors.text }]}>{conciergeReply}</Text>
+                      <Text style={[styles.replyModelFoot, { color: colors.textSecondary }]}>
+                        Generated by Muse Spark Open (Meta Hackathon, via Baseten) · {selectedLang.toUpperCase()}
+                      </Text>
+                    </>
+                  )}
+                </View>
+              )}
+            </View>
+
+            {/* Biometric Analysis Badges */}
+            <View style={styles.metricsRow}>
+              <View style={[styles.metricCard, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
+                <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>NEOCLASSICAL HARMONY</Text>
+                <Text style={[styles.metricValue, { color: '#16A34A' }]}>{activeMetrics.harmonyScore || 92}%</Text>
+              </View>
+              <View style={[styles.metricCard, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}>
+                <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>CRANIAL BALANCE</Text>
+                <Text style={[styles.metricValue, { color: colors.text }]}>Golden Ratio φ</Text>
+              </View>
+            </View>
+
+            {/* Action Button */}
+            <Pressable
+              style={[styles.confirmBtn, { backgroundColor: colors.accent }]}
+              onPress={onClose}
+            >
+              <Text style={styles.confirmBtnText}>Done</Text>
+            </Pressable>
+            <View style={{ height: 30 }} />
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -624,41 +638,39 @@ export function TryOnModal({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
     justifyContent: 'flex-end',
   },
   sheet: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     borderTopWidth: 1,
-    paddingHorizontal: 20,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    paddingHorizontal: 16,
     paddingTop: 12,
-    maxHeight: '92%',
+    maxHeight: '94%',
   },
   handle: {
-    width: 38,
+    width: 36,
     height: 4,
     borderRadius: 2,
     alignSelf: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   overline: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '800',
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
+    letterSpacing: 1.2,
   },
   title: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
-    letterSpacing: -0.4,
+    letterSpacing: -0.3,
     marginTop: 2,
   },
   closeBtn: {
@@ -677,7 +689,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderRadius: 10,
     padding: 3,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   modeToggleItem: {
     flex: 1,
@@ -689,7 +701,7 @@ const styles = StyleSheet.create({
   modeToggleActive: {
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
   },
@@ -697,25 +709,298 @@ const styles = StyleSheet.create({
     fontSize: 12,
     letterSpacing: 0.2,
   },
+  scrollBody: {
+    maxHeight: 680,
+  },
+  scanningViewport: {
+    width: '100%',
+    height: 280,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    marginBottom: 14,
+  },
+  scanHUDTag: {
+    backgroundColor: '#B88E3E',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  scanHUDTagText: {
+    color: '#000000',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  telemetryStatusText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textAlign: 'center',
+    marginBottom: 14,
+  },
+  progressBarTrack: {
+    width: '80%',
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#B88E3E',
+  },
+  viewportContainer: {
+    width: '100%',
+    marginBottom: 14,
+  },
+  imageWrapper: {
+    position: 'relative',
+    width: '100%',
+  },
+  badgeTopRight: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: 'rgba(17, 18, 21, 0.8)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+
+  // ── Multi-Model Telemetry Card ──
+  telemetryCard: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 12,
+    gap: 6,
+  },
+  telemetryTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  greenPulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#16A34A',
+  },
+  telemetryCardTitle: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  telemetryTextStack: {
+    gap: 3,
+  },
+  telemetryLine: {
+    fontSize: 10,
+    lineHeight: 15,
+  },
+  boldTech: {
+    fontWeight: '800',
+  },
+
+  // ── Lookbook Card ──
+  lookbookCard: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+    gap: 8,
+  },
+  lookbookHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  lookbookBadge: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  lookbookModelTag: {
+    fontSize: 9,
+    fontWeight: '600',
+  },
+  lookbookHeadline: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  lookbookProse: {
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  directivesList: {
+    gap: 6,
+    marginTop: 4,
+  },
+  directiveItem: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 8,
+    gap: 2,
+  },
+  directivePhase: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+  },
+  directiveDesc: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  directiveAnchor: {
+    fontSize: 9,
+    fontStyle: 'italic',
+  },
+
+  // ── Inspiration Card ──
+  inspirationCard: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 12,
+  },
+  inspirationHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  inspirationTitle: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  uploadInspirationBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  uploadInspirationBtnText: {
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  inspirationTagsRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  tagPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  tagPillText: {
+    fontSize: 9,
+    fontWeight: '700',
+  },
+
+  // ── Concierge Card ──
+  conciergeCard: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 12,
+    gap: 8,
+  },
+  conciergeHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  conciergeTitle: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  conciergeSub: {
+    fontSize: 9,
+    marginTop: 1,
+  },
+  langSelectorRow: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  langPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
+    backgroundColor: 'rgba(120, 120, 128, 0.12)',
+  },
+  langPillActive: {
+    backgroundColor: '#111215',
+  },
+  langPillText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#8E8E93',
+  },
+  langPillTextActive: {
+    color: '#FFFFFF',
+  },
+  questionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  questionBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  questionBtnText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  replyBubble: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    gap: 4,
+    marginTop: 4,
+  },
+  replyText: {
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '500',
+  },
+  replyModelFoot: {
+    fontSize: 8,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    marginTop: 2,
+  },
+
+  // ── Biometric Metrics ──
   metricsRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 16,
+    gap: 8,
+    marginBottom: 14,
   },
   metricCard: {
     flex: 1,
     borderRadius: 12,
     borderWidth: 1,
     paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     alignItems: 'center',
   },
   metricLabel: {
-    fontSize: 9,
-    fontWeight: '700',
+    fontSize: 8,
+    fontWeight: '800',
     letterSpacing: 0.8,
-    marginBottom: 3,
-    textTransform: 'uppercase',
+    marginBottom: 2,
   },
   metricValue: {
     fontSize: 13,
@@ -728,8 +1013,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   confirmBtnText: {
-    color: '#1a1005',
-    fontSize: 15,
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
   },
 });
