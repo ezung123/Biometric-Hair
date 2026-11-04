@@ -3,6 +3,7 @@
 
 <p align="left">
   <a href="https://biometric-hair-xa5n.vercel.app"><img src="https://img.shields.io/badge/Live_Demo-biometric--hair--xa5n.vercel.app-000000?style=for-the-badge&logo=vercel" alt="Live Demo on Vercel" /></a>
+  <a href="https://youtu.be/xpCfibff3UI"><img src="https://img.shields.io/badge/Demo_Video-YouTube-FF0000?style=for-the-badge&logo=youtube" alt="Demo Video on YouTube" /></a>
   <a href="https://meta.devpost.com"><img src="https://img.shields.io/badge/Meta_AI-Hackathon_2026-0668E1?style=for-the-badge&logo=meta" alt="Meta AI Hackathon 2026" /></a>
   <a href="https://baseten.co"><img src="https://img.shields.io/badge/Baseten_Grant-Muse_Spark_Open_1026-10B981?style=for-the-badge" alt="Baseten Grant" /></a>
   <a href="https://developers.google.com/mediapipe"><img src="https://img.shields.io/badge/Biometrics-MediaPipe_468_Landmarks-FF6F00?style=for-the-badge&logo=google" alt="MediaPipe 468 Landmarks" /></a>
@@ -16,7 +17,8 @@
 
 ---
 
-## 2. Live Demo & Credentials
+## 2. Live Demo & Video
+* 🎬 **Full YouTube Demo Walkthrough:** [https://youtu.be/xpCfibff3UI](https://youtu.be/xpCfibff3UI)
 * 🌐 **Production Web Application:** [https://biometric-hair-xa5n.vercel.app](https://biometric-hair-xa5n.vercel.app)
 * 🔒 **Authentication:** **Zero login or sign-up required.** Fully open for judges and users.
 * 🛡️ **Privacy Notice:** Zero images or facial coordinates are stored or transmitted. All biometric landmark calculations run 100% locally on-device.
@@ -24,6 +26,9 @@
 ---
 
 ## 3. Product Preview & Visuals
+
+[![Watch Biometric Hair Arch Demo Video](https://img.youtube.com/vi/xpCfibff3UI/maxresdefault.jpg)](https://youtu.be/xpCfibff3UI)
+*Click image above to watch the full 2-minute demo on YouTube.*
 
 | 1. Biometric Results & AI Stylist Entry | 2. AI Stylist Concierge with Traces |
 | :---: | :---: |

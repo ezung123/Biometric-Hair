@@ -1,6 +1,10 @@
 # 🏆 Biometric Hair Arch (φ 1.618) — Hackathon Submission Kit
 ### *Meta Global AI Developer Hackathon 2026*
 
+**🎬 YouTube Demo Video:** [https://youtu.be/xpCfibff3UI](https://youtu.be/xpCfibff3UI)  
+**🌐 Live Vercel Production App:** [https://biometric-hair-xa5n.vercel.app](https://biometric-hair-xa5n.vercel.app)  
+**📂 GitHub Repository:** [https://github.com/ezung123/Biometric-Hair](https://github.com/ezung123/Biometric-Hair)  
+
 ---
 
 ## ⚡ 1. Elevator Pitch (Under 200 Characters)
