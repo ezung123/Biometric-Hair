@@ -2,7 +2,7 @@
 ### *Zero-Identity-Swapping Cephalometric Hairstyle & Barber Prescription Engine*
 
 <p align="left">
-  <a href="https://biometric-hair.vercel.app"><img src="https://img.shields.io/badge/Live_Demo-biometric--hair.vercel.app-000000?style=for-the-badge&logo=vercel" alt="Live Demo on Vercel" /></a>
+  <a href="https://biometric-hair-xa5n.vercel.app"><img src="https://img.shields.io/badge/Live_Demo-biometric--hair--xa5n.vercel.app-000000?style=for-the-badge&logo=vercel" alt="Live Demo on Vercel" /></a>
   <a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fezung123%2FBiometric-Hair&env=BASETEN_API_KEY,APP_TOKEN&envDescription=Baseten%20API%20Key%20for%20Meta%20Muse%20Spark%20Open"><img src="https://vercel.com/button" alt="Deploy with Vercel" /></a>
   <a href="https://meta.devpost.com"><img src="https://img.shields.io/badge/Meta_AI-Hackathon_2026-0668E1?style=for-the-badge&logo=meta" alt="Meta AI Hackathon 2026" /></a>
   <a href="https://baseten.co"><img src="https://img.shields.io/badge/Baseten_Grant-Muse_Spark_Open_1026-10B981?style=for-the-badge" alt="Baseten Grant" /></a>
@@ -10,7 +10,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge" alt="MIT License" /></a>
 </p>
 
-> 🌐 **Live Web Application:** [https://biometric-hair.vercel.app](https://biometric-hair.vercel.app)  
+> 🌐 **Live Web Application:** [https://biometric-hair-xa5n.vercel.app](https://biometric-hair-xa5n.vercel.app) *(Alternative Branch URL: [biometric-hair-xa5n-git-main-ezung123.vercel.app](https://biometric-hair-xa5n-git-main-ezung123.vercel.app))*  
 > 💻 **Local Development Server:** `http://localhost:8081` · **Inference Proxy:** `http://localhost:3001`  
 > 🏆 **Meta Global AI Developer Hackathon (2026)** | **Track:** Indie Developer & Developer Tools | **Theme:** Build for Your World  
 > 📦 **GitHub Repository:** [https://github.com/ezung123/Biometric-Hair](https://github.com/ezung123/Biometric-Hair)
@@ -253,6 +253,6 @@ node --experimental-strip-types scripts/verify-filters.ts
 ## 🏆 Meta AI Developer Hackathon Submission
 * **Project Name:** Biometric Hair Arch (φ 1.618)
 * **Track:** Indie Developer & Developer Tools | **Theme:** Build for Your World
-* **Live Web App:** [https://biometric-hair.vercel.app](https://biometric-hair.vercel.app)
+* **Live Web App:** [https://biometric-hair-xa5n.vercel.app](https://biometric-hair-xa5n.vercel.app) · [Branch Deployment](https://biometric-hair-xa5n-git-main-ezung123.vercel.app)
 * **Engineers & Designers:** Antigravity AI Systems Team
 * **License:** MIT License (2026)
