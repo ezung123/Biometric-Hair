@@ -3,256 +3,177 @@
 
 <p align="left">
   <a href="https://biometric-hair-xa5n.vercel.app"><img src="https://img.shields.io/badge/Live_Demo-biometric--hair--xa5n.vercel.app-000000?style=for-the-badge&logo=vercel" alt="Live Demo on Vercel" /></a>
-  <a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fezung123%2FBiometric-Hair&env=BASETEN_API_KEY,APP_TOKEN&envDescription=Baseten%20API%20Key%20for%20Meta%20Muse%20Spark%20Open"><img src="https://vercel.com/button" alt="Deploy with Vercel" /></a>
   <a href="https://meta.devpost.com"><img src="https://img.shields.io/badge/Meta_AI-Hackathon_2026-0668E1?style=for-the-badge&logo=meta" alt="Meta AI Hackathon 2026" /></a>
   <a href="https://baseten.co"><img src="https://img.shields.io/badge/Baseten_Grant-Muse_Spark_Open_1026-10B981?style=for-the-badge" alt="Baseten Grant" /></a>
   <a href="https://developers.google.com/mediapipe"><img src="https://img.shields.io/badge/Biometrics-MediaPipe_468_Landmarks-FF6F00?style=for-the-badge&logo=google" alt="MediaPipe 468 Landmarks" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge" alt="MIT License" /></a>
 </p>
 
-> 🌐 **Live Web Application:** [https://biometric-hair-xa5n.vercel.app](https://biometric-hair-xa5n.vercel.app) *(Alternative Branch URL: [biometric-hair-xa5n-git-main-ezung123.vercel.app](https://biometric-hair-xa5n-git-main-ezung123.vercel.app))*  
-> 💻 **Local Development Server:** `http://localhost:8081` · **Inference Proxy:** `http://localhost:3001`  
-> 🏆 **Meta Global AI Developer Hackathon (2026)** | **Track:** Indie Developer & Developer Tools | **Theme:** Build for Your World  
-> 📦 **GitHub Repository:** [https://github.com/ezung123/Biometric-Hair](https://github.com/ezung123/Biometric-Hair)
+---
+
+## 1. What This Is
+**Biometric Hair Arch** is a clinical-grade aesthetic anthropometrics and hair consultation engine designed to eliminate the flaws of generative AI hair try-on apps. Rather than hallucinating distorted facial features or applying arbitrary 2D filters, the app tracks **468 3D cranial landmarks on-device**, computes aspect-corrected **Neoclassical Farkas Facial Thirds** and **Martin-Saller Morphological Indices**, and matches users against a curated physical catalog of 16 multi-angle hairstyles. When users require tailored guidance, an autonomous **AI Stylist Agent powered by Meta Muse Spark Open** executes deterministic tools to compare cuts, audit cranial balance, and compile an **Interactive Barber Consultation Brief** complete with physical centimeter zones, exact clipper guards (#1.5–#4), finishing techniques, and multilingual chair scripts (EN, ES, ZH, FR).
 
 ---
 
-## 🏛️ Executive Summary & Value Proposition
-
-### The Problem
-Consumer hair try-on applications suffer from three critical architectural flaws:
-1. **Identity Hallucination:** Generative inpainting models bleed across the facial perimeter, mutating user eye shapes, jawlines, and skin tone. Users are presented with an attractive photo of someone else rather than a realistic preview of themselves.
-2. **Cephalometric Blindness:** Styles are recommended randomly or based on superficial keywords rather than anatomical bone structure. A round face is given lateral volume that widens it; an elongated face is given crown height that stretches it further.
-3. **The "Barber Gap":** Even when a user finds an appealing hairstyle, they cannot communicate it technically to a barber or stylist. Showing a stylized 2D photo at an appointment rarely translates to proper shear techniques, clipper guards, or sectioning directives.
-
-### The Solution: Biometric Hair Arch
-**Biometric Hair Arch** replaces superficial photo filters with a **clinical-grade cephalometric analysis and styling engine** powered by the **Meta AI Ecosystem**:
-* **468 3D Dense Cranial Tracking:** Uses on-device WebAssembly to locate anatomical facial landmarks in calibrated 2D pixel space (Trichion, Glabella, Subnasale, Gnathion, Zygoma, and Gonion).
-* **Aspect-Invariant Neoclassical Anthropometrics:** Evaluates Farkas Vertical Thirds, Martin-Saller Morphological Facial Indices, and Gonial Ratios without webcam aspect-ratio squashing or stretching.
-* **Meta Muse Spark Series Reasoning (`meta-models/muse-spark-open-1026` via Baseten):** Prescribes mathematically calibrated volumetric compensation profiles (crown elevation, lateral taper, and forehead coverage) to restore neoclassical harmonic balance ($\varphi \approx 1.618$).
-* **Curated Multi-Angle Lookbook:** 16 styles spanning 48 high-definition studio reference views (Front, Profile, 45° Oblique) categorized with physical centimeter measurements (`topCm`, `sidesCm`, `backCm`).
-* **One-Click Barber Directives:** Generates precise clipper guard sequences, shear texturizing angles, and maintenance schedules ready to hand to any professional barber or stylist worldwide.
+## 2. Live Demo & Credentials
+* 🌐 **Production Web Application:** [https://biometric-hair-xa5n.vercel.app](https://biometric-hair-xa5n.vercel.app)
+* 🔒 **Authentication:** **Zero login or sign-up required.** Fully open for judges and users.
+* 🛡️ **Privacy Notice:** Zero images or facial coordinates are stored or transmitted. All biometric landmark calculations run 100% locally on-device.
 
 ---
 
-## ⚔️ Competitive Advantage: Why Biometric Hair Arch Wins
+## 3. Product Preview & Visuals
 
-| Feature / Dimension | Conventional AI Hair Apps / Hackathon Chatbots | Biometric Hair Arch (φ 1.618) |
-| :--- | :--- | :--- |
-| **Identity Integrity** | ❌ Hallucinates new facial bone structure, skin tone, and eyes | ✅ **Zero-Identity-Swapping:** 100% immutable biometric truth |
-| **Facial Measurement** | ❌ Aspect-stretched bounding boxes or raw guess | ✅ **Calibrated 2D Pixel Anthropometrics:** Martin-Saller Morphological Index |
-| **Hardware Efficiency** | ❌ Heavy cloud GPU streaming latency | ✅ **Instant WebAssembly Edge Tracking:** 60 FPS in-browser MediaPipe |
-| **Styling Foundation** | ❌ Keyword guessing ("curly", "messy") | ✅ **Neoclassical Farkas Tripartite Law:** Volumetric compensation vector |
-| **Stylist Deliverable** | ❌ Low-res AI image barber cannot reproduce | ✅ **Clinical Barber Spec Sheet:** Clipper guards (#1-#4), shear angles, maintenance |
-| **Meta AI Model** | ❌ Generic text completions | ✅ **Meta Muse Spark Open (Baseten Hackathon Grant):** Structured JSON reasoning |
-| **Production Ready** | ❌ Localhost only | ✅ **Vercel Serverless Production Deployment:** Static export + serverless edge proxy |
+| 1. Biometric Results & AI Stylist Entry | 2. AI Stylist Concierge with Traces |
+| :---: | :---: |
+| ![Results View](docs/screenshots/01_results_with_stylist_banner.png) | ![AI Stylist Drawer](docs/screenshots/02_stylist_drawer_initial.png) |
+
+| 3. Barber Brief & Style Match Cards | 4. Multilingual Barber Brief (Spanish) |
+| :---: | :---: |
+| ![Barber Brief Card](docs/screenshots/03_stylist_brief_card.png) | ![Spanish Barber Brief](docs/screenshots/05_barber_brief_es.png) |
 
 ---
 
-## 🧠 Meta AI Ecosystem Architecture
+## 4. How the Meta Model is Used
+
+### Model: Meta Muse Spark Open 1026 (`meta-models/muse-spark-open-1026`) via Baseten
+We utilize our **Meta AI Hackathon compute grant on Baseten** to run inference on **Meta Muse Spark Open 1026**, an 816B open-weights deep reasoning LLM. 
+
+### Core Responsibilities:
+1. **Cephalometric Mathematical Reasoning:** Evaluates raw Neoclassical vertical thirds (Trichion–Glabella, Glabella–Subnasale, Subnasale–Gnathion) and bizygomatic-to-jaw ratios to prescribe exact crown, lateral side, and fringe volumetric targets.
+2. **Deterministic Agent Tool Calling:** Runs an agent loop using strict JSON turn protocols (`call_tool` vs `final`), calling four pure local tools:
+   * `get_profile()`: Returns measured feature vectors and calibrated morphology probabilities.
+   * `search_catalog()`: Deterministic filter & rank with maintenance constraints and hair texture fit.
+   * `compare_styles()`: Side-by-side differential analysis of centimeter lengths, pros/cons, and trim frequencies.
+   * `build_barber_brief()`: Grounded technical extraction of clipper guards, shear angles, and verbal scripts.
+3. **Multilingual Barber Translation:** Translates technical barbering vocabulary and verbal chair scripts into Spanish (ES), Mandarin (ZH), and French (FR) while strictly preserving numerical clipper guards and physical dimensions.
+
+### System Prompt Excerpt:
+```text
+You are the Biometric Hair Stylist & Barbering Consultant powered by Meta Muse Spark Open.
+STRICT PRIVACY RULE: Never request or accept image bytes, photo file names, or personal identities.
+Use only anatomical measurements and catalog specs provided by tools.
+Never hallucinate millimeter measurements or clipper guard numbers.
+Keep answers under 3 sentences, calm, structured, and clinically authoritative.
+```
+
+### Operational Metrics & Guardrails:
+* **Latency:** ~1.2s to 1.8s per turn via the internal reverse proxy.
+* **Daily Cap & Rate Limits:** 200 calls/day and 25 requests/minute per IP with in-memory response caching.
+* **Why an LLM is the Right Fit:** Unlike static lookup tables, an LLM dynamically reconciles complex, competing trade-offs—such as an oblong face demanding reduced crown height combined with fine wavy texture and low-maintenance styling limits—and articulates technical barber instructions that users can confidently speak in the chair.
+
+---
+
+## 5. System Architecture
 
 ```mermaid
 flowchart TD
-    A["Camera Capture / Upload (Aspect Corrected)"] --> B["MediaPipe WASM (468 Dense Landmarks)"]
-    B --> C["Calibrated 2D Pixel Anthropometrics Engine"]
-    
-    subgraph Meta_AI_Ecosystem["Meta AI Ecosystem (Baseten Grant / Serverless Proxy)"]
-        D["Meta Muse Spark Open<br/>(meta-models/muse-spark-open-1026)"]
-        E["Meta Muse Wonder<br/>(Cephalometric Reasoning & Barber Spec)"]
-        F["Meta SAM 3.1 & Muse Image<br/>(Zero-Identity Facial Masking)"]
-        G["Meta Llama 3.2 Vision<br/>(Multimodal Lookbook Analysis)"]
-        H["Meta SeamlessM4T<br/>(Technical Barber Translation)"]
-        I["Meta AudioCraft<br/>(Sensory Acoustic Feedback)"]
+    subgraph Client["Client Presentation Layer (Expo Web / React Native)"]
+        Cam["Live Camera View / Demo Photo"] --> MP["MediaPipe FaceLandmarker (WASM)"]
+        MP --> Landmarks["468 3D Landmarks & Aspect Normalizer"]
+        Landmarks --> CephEngine["Neoclassical Farkas Cephalometric Engine"]
+        CephEngine --> CatRank["Catalog Filter & Scorer (16 Styles / 48 Angles)"]
+        CatRank --> UI["Lookbook HUD & Stylist Drawer"]
     end
 
-    C --> D
-    C --> E
-    D --> J["Volumetric Haircut Prescription (JSON)"]
-    E --> K["Clinical Barber Directives & Clipper Guards"]
-    H --> L["Multilingual Translations (ES, ZH, FR)"]
-    
-    subgraph UI_Client["Client Presentation Layer (Expo Web / Vercel Edge)"]
-        M["Live 60 FPS Biometric HUD"]
-        N["Dynamic Filtered Lookbook (Men / Women / All)"]
-        O["Multi-Angle Studio Gallery (Front / Side / Back)"]
-        P["Barber Spec Drawer & One-Click Copy"]
+    subgraph StylistAgent["AI Stylist & Barber Brief Engine (Behind FEATURE_STYLIST)"]
+        UI --> Agent["Stylist Agent Loop (JSON Protocol)"]
+        Agent --> Tools["Local Deterministic Tools:\n• get_profile()\n• search_catalog()\n• compare_styles()\n• build_barber_brief()"]
+        Tools --> Brief["Interactive Barber Brief (Zone Table, Guards, Scripts)"]
     end
-    
-    J --> N
-    K --> P
-    L --> P
-    I --> M
+
+    subgraph Server["Proxy / Vercel Edge Serverless Layer"]
+        Agent -.->|"POST /api/baseten/chat\n(Text Measurements ONLY)"| Proxy["Secure Node Proxy / Vercel Function"]
+        Proxy --> Baseten["Meta Muse Spark Open 1026\n(Baseten Grant Inference)"]
+        Baseten -.->|"Reasoning & Directives"| Proxy
+        Proxy -.-> Agent
+    end
+
+    subgraph Export["Export & Accessibility"]
+        Brief --> PDF["Download Printable PDF (window.print)"]
+        Brief --> Copy["1-Click Technical Clipboard Spec"]
+        Brief --> i18n["Multilingual Translation (EN / ES / ZH / FR)"]
+    end
 ```
 
-### Model Responsibilities
-1. **Meta Muse Spark Open (`meta-models/muse-spark-open-1026` via Baseten):**
-   * High-throughput, low-latency reasoning engine (Baseten Hackathon Grant: $100 credits, up to 2M TPM).
-   * Generates volumetric styling prescriptions based on Farkas vertical thirds and morphological facial indices.
-   * Powers the interactive **Salon Concierge AI** for biometric hair consultations.
-2. **Meta Muse Wonder:**
-   * Synthesizes complex anatomical metrics (jaw-to-cheekbone ratios, forehead height, lateral density) into structured technical barber cutting specifications.
-3. **Meta SAM 3.1 & Meta Muse Image:**
-   * Implements strict **Zero-Identity-Swapping** negative landmark prompts (locking Landmarks 9, 168, 234, 454, 152) to ensure facial features remain bit-for-bit immutable.
-4. **Meta Llama 3.2 Vision (`meta-llama/llama-3.2-11b-vision-instruct`):**
-   * Analyzes uploaded client inspiration images to detect curl pattern, volume density, and parting structure.
-5. **Meta SeamlessM4T:**
-   * Translates English barber specifications into Spanish, French, and Chinese for multilingual salon accessibility.
-6. **Meta AudioCraft:**
-   * Synthesizes sensory acoustic feedback (biometric scan hum and high-fidelity camera shutter) for a clinical-luxury user experience.
+---
+
+## 6. Privacy & Security Guarantees
+
+* **On-Device Landmark Execution:** MediaPipe WebAssembly runs 100% inside the user's browser sandbox. Raw webcam frames never touch external servers.
+* **Zero Biometric & Zero Image Ingestion (Hard Rule):** No image bytes, base64 strings, or captured file paths are ever sent to Meta AI or external APIs. Automated test suites (`assertPrivacyGuarantees`) fail the build if any image data enters the request payload.
+* **Zero User Tracking & No Cookies:** Compliant with GDPR and CCPA under a zero-storage, zero-retention mandate.
+* **Server-Side API Key Isolation:** `BASETEN_API_KEY` is secured on the server proxy. Client web bundles are scanned via automated token checkers (`npm run check:secrets`) to ensure 0 token exposure.
 
 ---
 
-## 📐 Mathematical & Anthropometric Foundation
-
-Biometric Hair Arch operates on calibrated 2D pixel coordinates ($x_{px} = L_i.x \cdot W, y_{px} = L_i.y \cdot H$), eliminating the aspect-ratio elongation that plagues conventional webcams.
-
-### 1. Martin-Saller Morphological Facial Index ($FI$)
-$$\text{Facial Index} = \left(\frac{\text{Morphological Height } (L_{151} \rightarrow L_{152})}{\text{Bizygomatic Cheekbone Width } (L_{234} \rightarrow L_{454})}\right) \times 100$$
-* **Euryprosopic (Compact / Round):** $FI \le 83.0$
-* **Mesoprosopic (Harmonic Oval):** $84.0 \le FI \le 89.9$
-* **Leptoprosopic (Elongated / Oblong):** $FI \ge 91.0$
-
-### 2. Neoclassical Farkas Vertical Thirds
-Evaluated against the canonical Neoclassical Tripartite Law ($33.33\%$ each):
-* **Upper Third (Forehead):** Trichion ($L_{10}$) to Glabella ($L_{151}$)
-* **Mid Third (Mid-Face):** Glabella ($L_{151}$) to Subnasale ($L_{2}$)
-* **Lower Third (Jaw / Chin):** Subnasale ($L_{2}$) to Gnathion ($L_{152}$)
-
-$$\text{Variance Score } (\sigma) = \sqrt{\frac{(U - 33.33)^2 + (M - 33.33)^2 + (L - 33.33)^2}{3}}$$
-$$\text{Harmony Score} = \max\left(52, \min\left(98, 100 - 2.6 \cdot \sigma\right)\right)$$
-
-### 3. Horizontal Proportion & Gonial Angles
-* **Bizygomatic-to-Gonial Ratio:** Ratio of cheekbone span ($L_{234} \leftrightarrow L_{454}$) to mandibular jaw span ($L_{132} \leftrightarrow L_{361}$).
-* **Heart / Inverted-Triangle Detection:** Characterized by high forehead width relative to tapering gonion width ($W_{zygoma} / W_{jaw} > 1.32$).
-* **Square Morphology:** Characterized by equal bizygomatic and bigonial spans ($W_{zygoma} \approx W_{jaw}$) with sharp angular jaw contours.
-
----
-
-## ✂️ The Curated Lookbook (16 Canonical Styles, 48 Studio Views)
-
-Every style is cataloged with physical centimeter specifications, facial morphology compatibility vectors, and multi-angle studio photography:
-
-| ID | Hairstyle Name | Audience | Category | Target Face Shapes | Studio Views |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `french-crop` | Textured French Crop | Masculine | Short Textured | Oval, Round, Heart | Front, Profile, Back |
-| `classic-taper` | Low Taper Side Part | Masculine | Classic Professional | Square, Oblong, Oval | Front, Profile, Back |
-| `textured-quiff` | Volumetric Textured Quiff | Masculine | Volume Upward | Round, Square, Oval | Front, Profile, Back |
-| `buzz-fade` | Linear Buzz Fade | Masculine | Ultra Short Clean | Oval, Square | Front, Profile, Back |
-| `caesar-crop` | Textured Caesar Crop | Masculine | Short Crop | Oval, Oblong, Square | Front, Profile, Back |
-| `curtain-flow` | Mid-Length Curtain Flow | Masculine | Flow / Parted | Oblong, Square, Heart | Front, Profile, Back |
-| `undercut-slick` | Architectural Disconnected Undercut | Masculine | High Contrast | Round, Square, Oval | Front, Profile, Back |
-| `afro-taper` | Low Taper Afro Texture | Masculine | Textured Afro | Oval, Round, Square | Front, Profile, Back |
-| `blunt-bob` | Precision Parisian Blunt Bob | Feminine | Chin-Length Bob | Oval, Heart, Oblong | Front, Profile, Back |
-| `pixie-cut` | Modern Sculptural Pixie | Feminine | Ultra Short Crop | Oval, Heart, Round | Front, Profile, Back |
-| `butterfly-layers` | Volumetric Butterfly Layers | Feminine | Long Volume | Square, Oblong, Oval | Front, Profile, Back |
-| `curtain-bangs` | French Fringe Shag | Feminine | Mid-Length Shag | Oblong, Heart, Oval | Front, Profile, Back |
-| `blunt-lob` | Minimalist Blunt Collarbone Lob | Feminine | Medium Bob | Round, Square, Heart | Front, Profile, Back |
-| `beach-waves` | Layered Beach Waves | Feminine | Long Textured | Square, Oblong, Heart | Front, Profile, Back |
-| `asymmetric-bob` | Architectural Asymmetric Bob | Feminine | Precision Angles | Round, Heart, Oval | Front, Profile, Back |
-| `box-braids` | Knotless Box Braids | Feminine | Protective Braids | Oval, Square, Round | Front, Profile, Back |
-
----
-
-## 🚀 Instant 1-Click Vercel Deployment
-
-Deploy Biometric Hair Arch to Vercel with zero infrastructure configuration:
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fezung123%2FBiometric-Hair&env=BASETEN_API_KEY,APP_TOKEN&envDescription=Baseten%20API%20Key%20for%20Meta%20Muse%20Spark%20Open)
-
-### Manual Vercel Deployment Steps:
-1. Fork or clone this repository:
-   ```bash
-   git clone https://github.com/ezung123/Biometric-Hair.git
-   cd Biometric-Hair
-   ```
-2. Import the project on the [Vercel Dashboard](https://vercel.com/new).
-3. Vercel automatically detects the build configuration via `vercel.json`:
-   * **Build Command:** `npm run build:web` (`expo export --platform web`)
-   * **Output Directory:** `dist`
-4. In the **Environment Variables** panel, add:
-   * `BASETEN_API_KEY`: *Your Baseten Hackathon API Key*
-   * `APP_TOKEN`: `biometric-hair-token-v1` (or custom secret)
-5. Click **Deploy**. Your app is live with full serverless edge reasoning!
-
----
-
-## 🛠️ Local Development Quickstart
+## 7. Local Setup & Quickstart
 
 ### Prerequisites
-* **Node.js:** v18.0.0 or higher
-* **npm:** v9.0.0 or higher
-* Modern web browser with WebCam permissions (Chrome, Safari, Edge, Firefox)
+* Node.js v20+ or v22+
+* npm v10+
 
-### 1. Clone & Install
+### Step-by-Step Installation
+
 ```bash
+# 1. Clone repository
 git clone https://github.com/ezung123/Biometric-Hair.git
 cd Biometric-Hair
-npm install
-```
 
-### 2. Configure Environment Variables
-Copy the template and insert your Meta AI / Baseten credentials:
-```bash
+# 2. Install dependencies
+npm install --legacy-peer-deps
+
+# 3. Configure environment variables
 cp .env.example .env
-```
-Edit `.env`:
-```env
-BASETEN_API_KEY=b10_your_baseten_key_here
-BASETEN_BASE_URL=https://inference.baseten.co/v1
-BASETEN_MODEL_ID=meta-models/muse-spark-open-1026
-PROXY_PORT=3001
-APP_TOKEN=biometric-hair-token-v1
-```
+# Open .env and insert your BASETEN_API_KEY (optional: fallback works offline automatically)
 
-### 3. Start the Backend Proxy Server
-In terminal window 1:
-```bash
+# 4. Start the inference proxy server (Port 3001)
 npm run proxy
-```
-*Proxy runs at `http://localhost:3001` with zero client-side credential exposure.*
 
-### 4. Start the Expo Application
-In terminal window 2:
-```bash
+# 5. In a second terminal, start the Expo dev server
 npx expo start --web
 ```
-Open **`http://localhost:8081`** in your browser.
+Open [http://localhost:8081](http://localhost:8081) in your browser.
 
 ---
 
-## 🧪 Comprehensive Verification Suite
+## 8. Test Matrix & Verification
 
-Run our automated verification suites to confirm security, asset integrity, and algorithmic correctness:
+We enforce an automated 4-tier verification matrix covering mathematics, filters, privacy, and full-screen interaction:
 
-```bash
-# 1. Security & Secret Leak Audit (verifies 0 credentials in bundle)
-npm run check:secrets
-
-# 2. Asset Integrity Audit (verifies all 48 multi-angle views & 4:5 aspect ratios)
-npm run check:assets
-
-# 3. Cephalometric Unit Test Suite (tests all 5 morphologies & aspect invariance)
-node tests/faceAnalysisTest.js
-
-# 4. Filter & Dynamic Ranking Test Suite (tests strict gender segregation & re-ranking)
-node tests/filterAndRankTest.js
-
-# 5. Playwright End-to-End Test Suite (headless browser automation)
-node --experimental-strip-types scripts/verify-filters.ts
-```
+| Test Suite | Command | What It Validates |
+| :--- | :--- | :--- |
+| **Step 0 Baseline Regression** | `node --experimental-strip-types tests/regressionBaselineTest.js` | Locks 5 morphology fixtures (Oval, Round, Square, Oblong, Heart), 12 filter combinations, and 16 catalog styles with 48 multi-angle views. |
+| **Stylist & Privacy Unit Suite** | `node --experimental-strip-types tests/stylistUnitTests.js` | 17/17 tests validating deterministic tools, offline fallback, and throwing errors on any base64 image or filename leakage. |
+| **Playwright E2E Test (390x844)** | `node --experimental-strip-types scripts/verify-stylist-e2e.ts` | Mobile viewport test: Demo photo scan -> AI Stylist drawer -> Quick actions -> Reasoning traces -> Barber Brief -> PDF & Copy -> ES/ZH/FR translation. |
+| **Secret & Token Leak Scanner** | `npm run check:secrets` | Scans all static bundles and source files for hardcoded API keys and tokens. |
 
 ---
 
-## 🔒 Security & Privacy Statement
-* **No Facial Data Storage:** Biometric landmarks are derived ephemerally in volatile memory and immediately cleared after computing Neoclassical Farkas ratios. No client faces are uploaded to public cloud storage.
-* **Server-Side Key Isolation:** All Meta AI calls are executed through the internal proxy (`server/proxy.ts` locally or `api/index.js` on Vercel). Client web bundles are scanned and guaranteed free of API tokens.
-* **Open Source & Transparent:** Built with transparent mathematical formulas and open CC BY-SA 4.0 reference imagery.
+## 9. What is Real vs. What is Next
+
+### What Works Today (Production-Ready)
+- [x] Real-time 60 FPS 468 3D landmark tracking with WebAssembly.
+- [x] Aspect-ratio-invariant Farkas Vertical Thirds and Morphological Facial Index computation.
+- [x] Curated 16-cut / 48-angle studio lookbook with physical centimeter measurements.
+- [x] Interactive AI Stylist Agent with collapsible reasoning traces powered by Meta Muse Spark Open 1026.
+- [x] Grounded Barber Consultation Briefs with clipper guards (#1.5 to #4), shear directives, and verbal chair scripts.
+- [x] Real-time multilingual localization into Spanish (ES), Mandarin (ZH), and French (FR).
+- [x] 1-Click Copy and printable browser PDF export.
+- [x] Production Vercel deployment with serverless edge functions.
+
+### Roadmap (Post-Hackathon)
+- [ ] Direct export to Apple Wallet and Google Wallet passes for salon appointments.
+- [ ] 3D cranial mesh surface reconstruction via WebGL Gaussian splats (experimental behind `FEATURE_3D`).
+- [ ] Integration with barber salon booking APIs (Square, Fresha, Mindbody).
 
 ---
 
-## 🏆 Meta AI Developer Hackathon Submission
-* **Project Name:** Biometric Hair Arch (φ 1.618)
-* **Track:** Indie Developer & Developer Tools | **Theme:** Build for Your World
-* **Live Web App:** [https://biometric-hair-xa5n.vercel.app](https://biometric-hair-xa5n.vercel.app) · [Branch Deployment](https://biometric-hair-xa5n-git-main-ezung123.vercel.app)
-* **Engineers & Designers:** Antigravity AI Systems Team
-* **License:** MIT License (2026)
+## 10. Team, Credits & License
+
+* **Developed by:** Biometric Hair Arch Team for the **Meta Global AI Developer Hackathon 2026**.
+* **AI Model Compute:** Baseten Hackathon Grant for **Meta Muse Spark Open 1026**.
+* **Anthropometric Foundations:** Dr. Leslie G. Farkas (*Anthropometry of the Head and Face*).
+* **Face Tracking:** Google MediaPipe Face Landmarker WebAssembly.
+* **License:** [MIT License](LICENSE) — free and open for the global developer and barber community.

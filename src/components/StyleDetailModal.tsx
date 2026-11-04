@@ -28,6 +28,7 @@ interface StyleDetailModalProps {
   onToggleSave: (styleId: string) => void;
   onOpenCompare: (style: CatalogStyle) => void;
   metrics?: FacialMetrics;
+  onOpenBarberBrief?: (styleId: string) => void;
 }
 
 export function StyleDetailModal({
@@ -38,6 +39,7 @@ export function StyleDetailModal({
   onToggleSave,
   onOpenCompare,
   metrics,
+  onOpenBarberBrief,
 }: StyleDetailModalProps) {
   const { colors, isDark } = useAppTheme();
   const [activeView, setActiveView] = useState<'front' | 'side' | 'back'>('front');
@@ -361,6 +363,18 @@ export function StyleDetailModal({
                 <Text style={[styles.actionBtnSecondaryText, { color: colors.text }]}>COMPARE LOOKS</Text>
               </Pressable>
             </View>
+
+            {onOpenBarberBrief && (
+              <Pressable
+                onPress={() => {
+                  onClose();
+                  onOpenBarberBrief(style.id);
+                }}
+                style={[styles.actionBtnPrimary, { backgroundColor: '#10B981', marginBottom: 10 }]}
+              >
+                <Text style={styles.actionBtnPrimaryText}>✨ OPEN INTERACTIVE BARBER BRIEF</Text>
+              </Pressable>
+            )}
 
             <Pressable
               onPress={handlePrintBarberCard}

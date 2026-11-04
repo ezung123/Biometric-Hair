@@ -82,7 +82,7 @@ export function AboutUsModal({ visible, onClose }: AboutUsModalProps) {
                   <Text style={[styles.bulletText, { color: colors.text }]}>
                     <Text style={{ fontWeight: '800' }}>Muse Spark Open (816B): </Text>
                     <Text style={{ color: '#30D158', fontWeight: '700' }}>[RUNNING LIVE via Baseten Grant] </Text>
-                    Meta open-weights deep reasoning LLM with native multimodal vision. Evaluates Neoclassical Farkas facial thirds and generates strictly bounded volumetric styling prescriptions.
+                    Meta open-weights deep reasoning LLM with native multimodal vision. Powers the interactive AI Stylist Concierge and Multilingual Barber Consultation Brief with verifiable reasoning traces and strict tool execution. Evaluates Neoclassical Farkas facial thirds and generates strictly bounded volumetric styling prescriptions.
                   </Text>
                 </View>
                 <View style={styles.bulletRow}>

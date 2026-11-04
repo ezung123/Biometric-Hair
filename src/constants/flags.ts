@@ -20,6 +20,13 @@ export const FEATURE_3D = false;
 export const FEATURE_AI_PREVIEW = false;
 
 /**
+ * FEATURE_STYLIST:
+ * AI Stylist + Barber Brief feature flag.
+ * Default false during initial regression tests; switched to true once all tests pass.
+ */
+export const FEATURE_STYLIST = true;
+
+/**
  * DEBUG_CAPTURE:
  * When true, displays on-screen diagnostics overlay and verbose logging for
  * camera landmark coordinates, bounding box transforms, oval geometry,

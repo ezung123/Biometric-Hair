@@ -32,6 +32,10 @@ import { AboutUsModal } from '@/components/AboutUsModal';
 import { StyleDetailModal } from '@/components/StyleDetailModal';
 import { CompareModal } from '@/components/CompareModal';
 import { PhotoCreditsModal } from '@/components/PhotoCreditsModal';
+import { FEATURE_STYLIST } from '@/constants/flags';
+import { StylistDrawer } from '@/components/StylistDrawer';
+import { BarberBriefModal } from '@/components/BarberBriefModal';
+import { build_barber_brief, get_profile, type BarberBrief } from '@/stylist/tools';
 
 import { HAIRSTYLE_CATALOG, type CatalogStyle, type Audience, type HairLengthClass } from '@/constants/catalog';
 import {
@@ -200,6 +204,19 @@ export default function HomeScreen() {
   const [showLearnHairstylesModal, setShowLearnHairstylesModal] = useState(false);
   const [showAboutUsModal, setShowAboutUsModal] = useState(false);
   const [showPhotoCreditsModal, setShowPhotoCreditsModal] = useState(false);
+  const [showStylistDrawer, setShowStylistDrawer] = useState(false);
+  const [activeBarberBrief, setActiveBarberBrief] = useState<BarberBrief | null>(null);
+
+  const handleOpenBarberBriefById = (styleId: string) => {
+    const prof = get_profile(
+      truthfulAnalysis || undefined,
+      filters.audience,
+      'straight',
+      filters.length === 'all' ? 'medium' : filters.length
+    );
+    const brief = build_barber_brief(styleId, prof);
+    setActiveBarberBrief(brief);
+  };
 
   // Handle Save / Bookmark Look
   const toggleSaveLook = (styleId: string) => {
@@ -493,13 +510,24 @@ export default function HomeScreen() {
               </Text>
             </View>
 
-            <Pressable
-              onPress={() => setShowSettingsDrawer(true)}
-              style={[styles.headerIconBtn, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}
-              accessibilityLabel="Open settings"
-            >
-              <Text style={[styles.headerIconText, { color: colors.text }]}>MENU</Text>
-            </Pressable>
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              {FEATURE_STYLIST && (
+                <Pressable
+                  onPress={() => setShowStylistDrawer(true)}
+                  style={[styles.headerIconBtn, { backgroundColor: '#3B82F6', borderColor: '#3B82F6', minWidth: 70 }]}
+                  accessibilityLabel="Stylist"
+                >
+                  <Text style={[styles.headerIconText, { color: '#FFFFFF', fontWeight: '800' }]}>✨ STYLIST</Text>
+                </Pressable>
+              )}
+              <Pressable
+                onPress={() => setShowSettingsDrawer(true)}
+                style={[styles.headerIconBtn, { backgroundColor: colors.bgSubtle, borderColor: colors.border }]}
+                accessibilityLabel="Open settings"
+              >
+                <Text style={[styles.headerIconText, { color: colors.text }]}>MENU</Text>
+              </Pressable>
+            </View>
           </View>
 
           <ScrollView
@@ -590,6 +618,52 @@ export default function HomeScreen() {
                 )}
               </View>
             </View>
+
+            {/* ── AI STYLIST ENTRY BANNER (Feature Flagged) ── */}
+            {FEATURE_STYLIST && (
+              <Pressable
+                onPress={() => setShowStylistDrawer(true)}
+                style={{
+                  marginHorizontal: 16,
+                  marginBottom: 16,
+                  padding: 14,
+                  borderRadius: 14,
+                  backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
+                  borderWidth: 1.5,
+                  borderColor: '#3B82F6',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+                accessibilityLabel="Open AI Stylist"
+              >
+                <View style={{ flex: 1, marginRight: 12 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '800', color: '#3B82F6', letterSpacing: 0.5 }}>
+                      ✨ AI STYLIST & BARBER BRIEF
+                    </Text>
+                    <View style={{ backgroundColor: 'rgba(59, 130, 246, 0.2)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                      <Text style={{ fontSize: 9, fontWeight: '700', color: '#60A5FA' }}>MUSE SPARK</Text>
+                    </View>
+                  </View>
+                  <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 17 }}>
+                    Ask tailored questions, compare cuts, or generate your clinical Barber Brief with clipper specs.
+                  </Text>
+                </View>
+                <View
+                  style={{
+                    backgroundColor: '#3B82F6',
+                    paddingHorizontal: 14,
+                    paddingVertical: 8,
+                    borderRadius: 8,
+                  }}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.5 }}>
+                    CONSULT ›
+                  </Text>
+                </View>
+              </Pressable>
+            )}
 
             {/* ── 2. Filter Switchers (Audience & Length) ── */}
             <View style={styles.filterSection}>
@@ -1147,6 +1221,7 @@ export default function HomeScreen() {
         onToggleSave={toggleSaveLook}
         onOpenCompare={(s) => setCompareStyleA(s)}
         metrics={activeMetrics}
+        onOpenBarberBrief={FEATURE_STYLIST ? handleOpenBarberBriefById : undefined}
       />
 
       <CompareModal
@@ -1166,6 +1241,32 @@ export default function HomeScreen() {
           setSelectedDetailStyle(scored as any);
         }}
       />
+
+      {FEATURE_STYLIST && (
+        <>
+          <StylistDrawer
+            visible={showStylistDrawer}
+            onClose={() => setShowStylistDrawer(false)}
+            analysis={truthfulAnalysis || null}
+            audience={filters.audience}
+            onOpenStyleDetail={(scoredStyle) => {
+              setSelectedDetailStyle(scoredStyle as any);
+              setShowStylistDrawer(false);
+            }}
+            onOpenBarberBrief={(brief) => {
+              setActiveBarberBrief(brief);
+            }}
+          />
+
+          <BarberBriefModal
+            visible={Boolean(activeBarberBrief)}
+            onClose={() => setActiveBarberBrief(null)}
+            brief={activeBarberBrief}
+            onSaveLook={(styleId) => toggleSaveLook(styleId)}
+            isSaved={activeBarberBrief ? savedStyleIds.includes(activeBarberBrief.styleId) : false}
+          />
+        </>
+      )}
 
       <PhotoCreditsModal
         visible={showPhotoCreditsModal}
